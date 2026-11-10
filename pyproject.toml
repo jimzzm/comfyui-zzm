@@ -1,5 +1,5 @@
 [project]
-name = "zzm-toolbox"
+name = "comfyui-zzm"
 description = "常用节点合集：图像分辨率（比例+百万像素→宽高+Latent）、多段提示词逐条批量出图、图片文件夹、LoRA 加载器、保存图片、遮罩填洞，外加纯前端 Set/Get"
 version = "1.0.0"
 license = { file = "LICENSE" }

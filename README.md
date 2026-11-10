@@ -1,4 +1,4 @@
-# comfyui-zzm · zzm 工具箱
+# comfyui-zzm 工具箱
 
 一套自用的 ComfyUI 自定义节点，覆盖出图流程里最常手动操作的那几步：**算分辨率、批量喂提示词、从文件夹取图、挂 LoRA、按原名存图**。
 
@@ -6,15 +6,22 @@
 
 ## 安装
 
-把整个 `zzm-toolbox` 目录放进：
+放进 ComfyUI 的 `custom_nodes` 目录，文件夹名保持 `comfyui-zzm`：
 
 ```
-ComfyUI/custom_nodes/zzm-toolbox
+ComfyUI/custom_nodes/comfyui-zzm
+```
+
+或者直接 clone：
+
+```bash
+cd ComfyUI/custom_nodes
+git clone https://github.com/jimzzm/comfyui-zzm.git
 ```
 
 重启 ComfyUI。节点会出现在左侧节点库的 **⚡ zzm工具箱** 分类下。
 
-前端资源注册在 `/extensions/zzm-toolbox/`，由 `__init__.py` 里的 `WEB_DIRECTORY` 声明。
+前端资源注册在 `/extensions/comfyui-zzm/`，由 `__init__.py` 里的 `WEB_DIRECTORY` 声明。
 
 在节点搜索框输入 `zzm` 可以一次列出全部节点（走 `SEARCH_ALIASES`，不影响节点显示名）。
 
@@ -114,15 +121,6 @@ ComfyUI/custom_nodes/zzm-toolbox
 
 `example_workflows/Moss-SFT-test.json` —— Moss-SFT 文生图，用「多段提示词」一次跑完多段文案。
 
-**需要的模型**（放到 ComfyUI 对应目录）：
-
-| 类型 | 文件 | 目录 |
-|---|---|---|
-| UNET | `moss_image_sft_int8_convrot.safetensors` | `models/diffusion_models/Moss/` |
-| CLIP | `qwen3.5_9b_int8_convrot.safetensors` | `models/text_encoders/` |
-| VAE | `flux2-vae.safetensors` | `models/vae/` |
-| LoRA | `moss_image_sft_4_steps_lora_v2_*.safetensors`（启用）<br>`lodestones-8-steps-dmd2-lora_*.safetensors`（停用，备用） | `models/loras/Moss/` |
-
 流程：加载 CLIP / UNET / VAE → LoRA 加载器 → **多段提示词（逐条）** 把文本按空行切成多段 → **图像分辨率** 给出 1024×1536（2:3 / 1.5 百万像素 / 倍数 32）→ KSampler（4 步、CFG 1.0、euler / simple）→ 保存图片。
 
 点一次 Run 会依次跑完所有段落（一条跑完自动排下一条，显存占用等同单张）。想从某一段开始，把「多段提示词」的「当前索引」改成对应条号；想中途停下就点取消。
@@ -132,7 +130,7 @@ ComfyUI/custom_nodes/zzm-toolbox
 ## 目录结构
 
 ```
-zzm-toolbox/
+comfyui-zzm/
 ├── __init__.py                  节点注册、前端目录声明
 ├── nodes_resolution.py          图像分辨率
 ├── nodes_mask_fill_holes.py     遮罩填洞

@@ -173,7 +173,7 @@ zzm-toolbox/
 ## 致谢
 
 - `ausport/` 下的**图片文件夹 / LoRA 加载器 / 保存图片**移植改造自 [ComfyUI-AusBoss](https://github.com/ausboss/ComfyUI-AusBoss)（MIT），保留了原作者的前端组件与后端结构，只改了文案、配色和命名空间。
-- **多段提示词**的面板风格参考 Pixaroma。
+- 整体**配色风格**参考 Pixaroma。
 
 ## License
 

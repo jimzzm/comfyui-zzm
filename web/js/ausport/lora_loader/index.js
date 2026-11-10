@@ -1415,7 +1415,7 @@ async function saveCivitaiPicture(serverName, info, anyRating) {
   if (!picture) {
     loraToast(anyRating
       ? "Civitai 上没有这个 LoRA 的图可存。"
-      : "Civitai 上没有 PG-13 及以下的图。");
+      : "Civitai 上没有 PG-13 及以下的图（节点设置里把「Civitai 配图」改成 any 可保存）。");
     return;
   }
   const response = await fetch(smallPictureUrl(picture.url), {

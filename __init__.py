@@ -16,10 +16,10 @@ zzm 工具箱 — ComfyUI 自定义节点合集
 提示词「逐条」模式的做法：包一层 PromptQueue.task_done，一条跑完存完再自动排下一条。
 对 ComfyUI 来说就是 N 个连续的独立任务，显存占用与单张出图相同，不随条数增长。
 
-前端资源统一挂在 web/ 下，由 WEB_DIRECTORY 注册为 /extensions/zzm-toolbox/。
-目录名 2026-11-10 从中文的 `zzm工具箱` 改成 ASCII：中文目录名会让 aiohttp 的
-web.static 匹配不上（前端 JS 全部 404），节点上方的徽标也会被截成 `zzm工`
-（那个徽标显示的就是 RELATIVE_PYTHON_MODULE 里的目录名）。
+前端资源统一挂在 web/ 下，由 WEB_DIRECTORY 注册为 /extensions/comfyui-zzm/。
+目录名必须保持 ASCII（本目录 2026-11-11 定为 `comfyui-zzm`，与 GitHub 仓库同名）：
+中文目录名会让 aiohttp 的 web.static 匹配不上（前端 JS 全部 404），节点上方的徽标
+也会被截断（那个徽标显示的就是 RELATIVE_PYTHON_MODULE 里的目录名）。
 """
 
 # Register web extension directory for frontend JS

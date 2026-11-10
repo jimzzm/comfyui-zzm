@@ -2,7 +2,7 @@
 
 一套自用的 ComfyUI 自定义节点，覆盖出图流程里最常手动操作的那几步：**算分辨率、批量喂提示词、从文件夹取图、挂 LoRA、按原名存图**。
 
-8 个后端节点 + 1 组纯前端节点（Set / Get）。除 ComfyUI 自带的 `torch` / `numpy` / `Pillow` 外**没有额外依赖**，不需要 `pip install`。
+7 个后端节点 + 1 组纯前端节点（Set / Get）。除 ComfyUI 自带的 `torch` / `numpy` / `Pillow` 外**没有额外依赖**，不需要 `pip install`。
 
 ## 安装
 

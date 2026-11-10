@@ -464,6 +464,9 @@ function installStyles() {
   .zzmaus-lora-chip { border: 1px solid var(--zzm-line,#43484e); border-radius: 10px; background: var(--zzm-chip-bg,#2e3135);
     color: inherit; cursor: pointer; padding: 2px 8px; font-size: 11.5px; }
   .zzmaus-lora-chip.active { border-color: ${BRAND}; color: ${BRAND}; }
+  .zzmaus-lora-chip-x { margin-left: 5px; opacity: .5; font-size: 13px; line-height: 1; }
+  .zzmaus-lora-chip:hover .zzmaus-lora-chip-x { opacity: .8; }
+  .zzmaus-lora-chip-x:hover { opacity: 1; color: #ff6b6b; }
   .zzmaus-lora-fetch { align-self: flex-start; }
   .zzmaus-lora-custom { display: flex; gap: 6px; align-items: center; }
   .zzmaus-lora-custom input { flex: 1 1 auto; min-width: 0; height: ${ACTIONS_HEIGHT}px;
@@ -1480,14 +1483,17 @@ function openInfo(state, index, anchor) {
     // One click can change other chips too: the same word can sit in two
     // lists, and a phrase with commas shares its words with shorter chips.
     const chipRefreshers = [];
-    const chipSection = (label, words) => {
+    const chipSection = (label, words, removable = false) => {
       if (!words?.length) return;
       card.append(el("div", "zzmaus-lora-meta", label));
       const chips = el("div", "zzmaus-lora-chips");
       for (const word of words) {
-        const chip = el("button", "zzmaus-lora-chip", word);
+        const chip = el("button", "zzmaus-lora-chip");
         chip.type = "button";
-        chip.title = "点一下把这个触发词加进/移出该行的输出";
+        chip.title = removable
+          ? "点一下加入/移出输出；点右侧 × 删掉这个词"
+          : "点一下把这个触发词加进/移出该行的输出";
+        chip.append(document.createTextNode(word));
         const refresh = () => chip.classList.toggle(
           "active", hasTrigger(state.rows[index].triggers, word)
         );
@@ -1500,13 +1506,37 @@ function openInfo(state, index, anchor) {
           commitRows(state, rows);
           for (const refreshChip of chipRefreshers) refreshChip();
         });
+        if (removable) {
+          // 自建词才给删除入口：文件/Civitai 来的词删不掉，只能取消勾选
+          const cross = el("span", "zzmaus-lora-chip-x", "×");
+          cross.title = "删除这个自定义触发词";
+          cross.addEventListener("click", async (event) => {
+            event.stopPropagation();
+            const left = (info.custom_triggers || []).filter((w) => w !== word);
+            try {
+              await api.fetchApi("/zzmaus/lora/triggers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: serverName, words: left }),
+              });
+            } catch {}
+            // 删词的同时把它从那几行的触发词输出里摘掉，别留悬空引用
+            const rows = state.rows.map((entry, i) => (
+              i === index && hasTrigger(entry.triggers, word)
+                ? { ...entry, triggers: toggleTrigger(entry.triggers, word) } : entry
+            ));
+            commitRows(state, rows);
+            load();
+          });
+          chip.append(cross);
+        }
         chips.append(chip);
       }
       card.append(chips);
     };
     chipSection("来自文件", info.file_triggers);
     chipSection("来自 Civitai", info.civitai_triggers);
-    chipSection("自己填的", info.custom_triggers);
+    chipSection("自己填的", info.custom_triggers, true);
 
     if (state.settings?.civitai_lookup !== false) {
       const fetchButton = el(

@@ -1,0 +1,512 @@
+// Widget cards for the nodes whose face was still a stack of classic canvas
+// widgets. Each entry names the rows the card shows in place of those
+// widgets; the card (js/shared/widget_card.mjs) hides the originals and
+// mirrors them, so the backend, saved workflows and widget-to-input links
+// are untouched. Rows with `when` appear only while they mean something,
+// and a `group` row folds the rarely-touched settings behind one click.
+import { api } from "/scripts/api.js";
+import { app } from "/scripts/app.js";
+import { chainCallback, notifyZzmChange } from "../shared/index.mjs";
+import { formatWidgetVisibility } from "../shared/save_video_formats.mjs";
+import { hideInputsInDef } from "../shared/widget_visibility.mjs";
+import { castChips } from "../shared/h3_cast_chips.mjs";
+import { momentStrip } from "../shared/moment_strip.mjs";
+import { mountWidgetCard } from "../shared/widget_card.mjs";
+import { SOCKETLESS_CHOICE, SOCKETLESS_TEXT, commitWidgetValue, markSocketless, resetUnknownValues } from "../shared/widget_card_math.mjs";
+import { mediaViewQuery } from "../shared/media_list.mjs";
+import { gearIconSvg, openSettingsMenu } from "../shared/settings_menu.mjs";
+import { SEAM_MENU, SEAM_MUTE_TITLES, isBlendIn, seamCornerReserve } from "../shared/stitch_seam.mjs";
+import { NUMBER_LOOK_MENU, TEXT_LOOK_MENU, setTextLook, textLook, textLookCornerReserve } from "../shared/text_look.mjs";
+import { fineEdgeLabel } from "../shared/touch_math.mjs";
+import { valueToTake, wiredLimits } from "../shared/wired_limits.mjs";
+
+// The Source lists preview the hovered file straight from ComfyUI's /view.
+const viewUrl = (value) => api.apiURL(`/view?${mediaViewQuery(value)}`);
+
+const isMode = (name, ...modes) => (values) => modes.includes(values[name]);
+// Stitch Inpaint: Seam lives in the card's gear menu (shared/stitch_seam.mjs
+// holds the menu and the rules). The gear in the card's corner opens the
+// menu; a "blend in" chip beside it shows the mode at a glance and opens the
+// same menu.
+function seamCorner(node, card) {
+  const tools = document.createElement("div");
+  tools.style.cssText = "position:relative;display:flex;align-items:center;gap:5px";
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = "zzmaus-card-chip";
+  chip.textContent = "blend in";
+  chip.title = "Seam is blend in, so Fix edge halo is not used. Change it in the gear menu.";
+  const gear = document.createElement("button");
+  gear.type = "button";
+  gear.className = "zzmaus-card-gear";
+  gear.title = "Stitch Inpaint settings";
+  gear.innerHTML = gearIconSvg();
+  const open = () => openSettingsMenu({
+    scope: "stitch_inpaint",
+    schema: SEAM_MENU,
+    anchor: gear.getBoundingClientRect(),
+    title: "Stitch Inpaint settings",
+    initial: { seam: card.values().seam, paste_onto: card.values().paste_onto },
+    onChange: (values, key) => {
+      if (key === "seam" || key === "paste_onto") card.setWidget(key, values[key]);
+    },
+  });
+  gear.addEventListener("click", open);
+  chip.addEventListener("click", open);
+  // Under the chip, beside the muted Fix edge halo row: why it is dim.
+  const note = document.createElement("div");
+  note.append("not used", document.createElement("br"), "by blend in");
+  note.style.cssText = "position:absolute;top:33px;right:2px;text-align:right;white-space:nowrap;"
+    + "color:var(--zzm-dim,#b0b4ba);font:10.5px/11.5px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;"
+    + "pointer-events:none";
+  tools.append(chip, gear, note);
+  return {
+    element: tools,
+    sync: (values) => {
+      chip.hidden = !isBlendIn(values);
+      note.hidden = chip.hidden;
+      return seamCornerReserve(values);
+    },
+  };
+}
+// Text, Integer and Float: the gear in the card's corner picks the node's
+// look, the usual box or big and centred (shared/text_look.mjs). The look is
+// kept on the node, not in a widget, so the node's inputs and saved values
+// never change.
+const lookCorner = (schema, title) => (node, card) => {
+  const gear = document.createElement("button");
+  gear.type = "button";
+  gear.className = "zzmaus-card-gear";
+  gear.title = title;
+  gear.innerHTML = gearIconSvg();
+  gear.addEventListener("click", () => openSettingsMenu({
+    scope: "text_look",
+    schema,
+    anchor: gear.getBoundingClientRect(),
+    title,
+    initial: { look: textLook(node) },
+    onChange: (values) => {
+      if (values.look === textLook(node)) return;
+      setTextLook(node, values.look);
+      card.refresh();
+      node.graph?.setDirtyCanvas?.(true, true);
+      notifyZzmChange();
+    },
+  }));
+  return { element: gear, sync: () => textLookCornerReserve(textLook(node)) };
+};
+const textLookCorner = lookCorner(TEXT_LOOK_MENU, "Text settings");
+const numberLookCorner = lookCorner(NUMBER_LOOK_MENU, "Number settings");
+// Save Video rows that only some formats read (crf, save_metadata).
+const formatReads = (name) => (values) => formatWidgetVisibility(String(values.format))[name];
+
+const CARDS = {
+  ZZM_NODES_ImageResize: {
+    minWidth: 300,
+    rows: [
+      { widget: "target_mode", label: "Target", kind: "select",
+        labels: { "width+height": "Width × height", longest_edge: "Longest edge", shortest_edge: "Shortest edge", megapixels: "Megapixels", scale_factor: "Scale factor" } },
+      // Sockets for the pair sit among the node's inputs (one socket per
+      // row is the rule, and a size is what people wire).
+      { pair: ["width", "height"], label: "尺寸", prefixes: ["W", "H"], sep: "×", top: true, pixels: true, when: isMode("target_mode", "width+height") },
+      { widget: "edge_length", label: "Edge", suffix: "px", when: isMode("target_mode", "longest_edge", "shortest_edge") },
+      { widget: "megapixels", label: "Budget", suffix: "MP", when: isMode("target_mode", "megapixels") },
+      { widget: "scale_factor", label: "Scale", suffix: "×", when: isMode("target_mode", "scale_factor") },
+      { widget: "keep_proportion", label: "Fit", kind: "segment", labels: { cover_crop: "cover" } },
+      { widget: "fill_color", label: "Fill", kind: "color", when: isMode("keep_proportion", "pad") },
+      { widget: "divisible_by", label: "Multiple" },
+      { widget: "interpolation", label: "Filter", kind: "select" },
+    ],
+  },
+  ZZM_NODES_ColorMatch: {
+    minWidth: 300,
+    rows: [
+      { widget: "strength", label: "Strength" },
+      { widget: "method", label: "Method", kind: "segment", labels: { histogram: "hist" }, titles: { histogram: "histogram" } },
+      { widget: "reference_mode", label: "Reference", kind: "segment", labels: { reference: "reference", first_frame: "first frame" } },
+      { widget: "invert_mask", label: "Invert mask" },
+    ],
+  },
+  // One number to set: the megapixels of the finished picture, in half
+  // steps. The rest has defaults that hold for the models tried and sits
+  // behind More.
+  ZZM_NODES_TiledUpscale: {
+    minWidth: 300,
+    rows: [
+      { widget: "megapixels", label: "Megapixels", suffix: "MP", step: 0.5, snap: true, decimals: 1, title: "Size of the finished picture. 0 keeps the picture's own size." },
+      { group: "advanced", label: "More" },
+      { widget: "tile_megapixels", label: "Tile size", suffix: "MP", step: 0.5, snap: true, decimals: 1, group: "advanced" },
+      { widget: "overlap", label: "Overlap", suffix: "px", group: "advanced" },
+      { widget: "multiple", label: "Multiple", snap: true, step: 8, group: "advanced" },
+      { widget: "max_growth", label: "Redraw limit", suffix: "×", decimals: 1, group: "advanced" },
+    ],
+  },
+  ZZM_NODES_TiledUpscaleStitch: { minWidth: 260, rows: [{ widget: "keep_colors", label: "Keep colors" }] },
+  ZZM_NODES_StitchInpaint: {
+    minWidth: 300,
+    // A workflow saved before Seam existed holds the card's own empty value
+    // in the slot Seam now takes; it loads as classic. One saved with Seam
+    // holds it in Paste onto's slot, and loads as crop.
+    resetUnknown: { seam: "classic", paste_onto: "crop" },
+    // Seam and Paste onto have no row and no socket: the gear menu sets them.
+    hide: ["seam", "paste_onto"],
+    socketless: ["seam", "paste_onto"],
+    corner: seamCorner,
+    rows: [
+      { widget: "color_match", label: "Tone match" },
+      { widget: "fix_edge_halo", label: "Fix edge halo", mute: isBlendIn, muteTitle: SEAM_MUTE_TITLES.fix_edge_halo },
+    ],
+  },
+  ZZM_NODES_CropForInpaint: {
+    minWidth: 320,
+    // A workflow saved before Stay in picture existed holds the card's own
+    // empty value in the slot keep_inside now takes; it loads on, the node's
+    // default and what an API prompt without keep_inside runs with.
+    resetUnknown: { keep_inside: true },
+    rows: [
+      { widget: "context_factor", label: "Context", suffix: "×" },
+      { widget: "keep_inside", label: "Stay in picture" },
+      { widget: "blend_pixels", label: "Blend", suffix: "px" },
+      { widget: "output_multiple", label: "Multiple" },
+      { widget: "mask_grow", label: "Grow", suffix: "px" },
+      { widget: "mask_blur", label: "Blur" },
+      { widget: "invert_mask", label: "Invert mask" },
+      { group: "advanced", label: "Target size, extend" },
+      { widget: "context_pixels", label: "Extra context", suffix: "px", group: "advanced" },
+      { widget: "target_width", label: "Target width", suffix: "px", group: "advanced" },
+      { widget: "target_height", label: "Target height", suffix: "px", group: "advanced" },
+      { widget: "target_megapixels", label: "Target", suffix: "MP", group: "advanced" },
+      { widget: "rescale_algorithm", label: "Rescale", kind: "segment", group: "advanced" },
+      { widget: "extend_left", label: "Extend left", suffix: "px", group: "advanced" },
+      { widget: "extend_right", label: "Extend right", suffix: "px", group: "advanced" },
+      { widget: "extend_up", label: "Extend up", suffix: "px", group: "advanced" },
+      { widget: "extend_down", label: "Extend down", suffix: "px", group: "advanced" },
+    ],
+  },
+  ZZM_NODES_RefineMask: {
+    minWidth: 300, first: true,
+    // A workflow saved by a 1.x release holds the preview panel's own empty
+    // value where preview now sits; it loads on, the node's default. One
+    // saved by 2.x before Max hole size existed holds the card's there; it
+    // loads 0, no limit, as the node ran then.
+    resetUnknown: { preview: true, max_hole_size: 0 },
+    rows: [
+      { widget: "expand", label: "Expand", suffix: "px" },
+      { widget: "blur", label: "Blur" },
+      { group: "advanced", label: "More" },
+      { widget: "fill_holes", label: "Fill holes", group: "advanced" },
+      { widget: "max_hole_size", label: "Max hole size", suffix: "%", group: "advanced",
+        mute: (values) => values.fill_holes !== true, muteTitle: "Used only while Fill holes is on." },
+      { widget: "smooth", label: "Smooth", suffix: "px", group: "advanced" },
+      { widget: "black_point", label: "Black point", group: "advanced" },
+      { widget: "white_point", label: "White point", group: "advanced" },
+      { widget: "edge_refine", label: "Edge", kind: "segment", labels: { "guided filter": "guided" }, group: "advanced" },
+    ],
+  },
+  // The settings of Image Folder. Its gallery (js/image_folder) sits under
+  // the card and owns the hidden `pictures` widget. The ticks on the gallery
+  // write it, so it takes no link: a second text link would land there once
+  // Folder is wired.
+  ZZM_NODES_ImageFolder: {
+    minWidth: 320, first: true, hide: ["pictures"], socketless: ["pictures"],
+    rows: [
+      { widget: "source", label: "来源", kind: "segment" },
+      { widget: "folder", label: "文件夹", placeholder: "留空 = 目录本身",
+        button: { text: "浏览", title: "选择 ComfyUI 输入/输出目录里的文件夹。",
+          onClick: (node, state) => node.__zzmausImageFolder?.browse(state?.root?.querySelector(".zzmaus-card-btn")) } },
+      { widget: "subfolders", label: "含子文件夹", offText: "否", onText: "是" },
+      { widget: "sort", label: "排序", kind: "select" },
+      { widget: "run", label: "运行", kind: "segment" },
+      { widget: "position", label: "当前位置", when: (values) => values.run === "每次一张" },
+      { widget: "after_run", label: "运行后", kind: "segment", when: (values) => values.run === "每次一张" },
+      { widget: "at_the_end", label: "到尾后", kind: "segment", when: (values) => values.run === "每次一张" },
+    ],
+  },
+  // The settings of Mask by Touch. Its picture (js/mask_by_touch) sits above
+  // the card and owns the hidden `touches` and `ask` widgets. The picture
+  // writes both, so neither takes a link: with a socket, a text link dragged
+  // over the node lit a drop target at the card's top edge.
+  ZZM_NODES_MaskByTouch: {
+    minWidth: 400, hide: ["touches", "ask"], socketless: ["touches", "ask"],
+    rows: [
+      { widget: "grow", label: "Grow", suffix: "px" },
+      // Half a pixel a step, a tenth with Shift.
+      { widget: "soften", label: "Soften", suffix: "px", step: 0.5, decimals: 1 },
+      // Off, or the model file that does it. With one file it reads off | on;
+      // with more, each by its own name.
+      { widget: "fine_edges", label: "Fine edges", labels: fineEdgeLabel },
+      { group: "advanced", label: "More" },
+      { widget: "smooth", label: "Smooth", suffix: "px", group: "advanced" },
+      { widget: "fill_holes", label: "Fill small holes", group: "advanced" },
+      { widget: "invert", label: "Invert", group: "advanced" },
+      { widget: "if_nothing", label: "If nothing", kind: "segment", group: "advanced" },
+      { widget: "free_vram", label: "Free VRAM", group: "advanced" },
+    ],
+  },
+  // The canvas size of Layout Boxes. Its canvas (js/layout_boxes) sits under
+  // the card and owns the hidden `layout` widget. A picture on `background`
+  // sets the size, so the row dims while one is wired, as width and height
+  // are hidden on Create Bounding Boxes then.
+  ZZM_NODES_LayoutBoxes: {
+    minWidth: 360, first: true, hide: ["layout"],
+    rows: [
+      { pair: ["width", "height"], label: "Canvas", prefixes: ["W", "H"], sep: "×", top: true, snap: true, linkedBy: ["background"] },
+    ],
+  },
+  ZZM_NODES_MaskByName: {
+    minWidth: 300, first: true,
+    rows: [
+      { widget: "name", label: "Find" },
+      { widget: "several", label: "If several", kind: "segment" },
+      { widget: "grow", label: "Grow", suffix: "px" },
+      { widget: "soften", label: "Soften", suffix: "px" },
+      { widget: "if_nothing", label: "If nothing", kind: "segment" },
+      { group: "advanced", label: "More" },
+      { widget: "threshold", label: "Sureness", group: "advanced" },
+      { widget: "fill_holes", label: "Fill holes", group: "advanced" },
+      { widget: "free_vram", label: "Free VRAM", group: "advanced" },
+    ],
+  },
+  ZZM_NODES_FrameInterpolate: {
+    minWidth: 300,
+    rows: [
+      { pair: ["source_fps", "target_fps"], label: "FPS", sep: "→", top: true },
+      { widget: "method", label: "Method", kind: "select", labels: { "optical flow (requires cached RAFT weights)": "optical flow (RAFT)" } },
+      { widget: "scene_cut_threshold", label: "Scene cut" },
+      { widget: "batch_size", label: "Batch" },
+    ],
+  },
+  ZZM_NODES_AlignImage: {
+    minWidth: 300,
+    rows: [
+      { widget: "mode", label: "Mode", kind: "segment" },
+      { widget: "multiple", label: "Multiple" },
+      { widget: "crop_position", label: "Anchor", kind: "select", when: isMode("mode", "crop") },
+      { widget: "pad_position", label: "Anchor", kind: "select", when: isMode("mode", "pad") },
+      { widget: "pad_fill", label: "Pad fill", kind: "segment", when: isMode("mode", "pad") },
+      { widget: "pad_color", label: "Pad color", kind: "color", when: (values) => values.mode === "pad" && values.pad_fill === "color" },
+    ],
+  },
+  ZZM_NODES_RealignToSource: {
+    minWidth: 300,
+    rows: [
+      { widget: "fit", label: "Fit", kind: "segment",
+        titles: { "zoom + shift": "A separate horizontal and vertical zoom plus a shift: how Qwen edits drift", affine: "Also a slight rotation or shear" } },
+      { widget: "empty_fill", label: "Empty fill", kind: "segment",
+        titles: { edge: "Stretch the nearest edge pixels", source: "The original's pixels", gray: "Flat #808080, for an inpaint pass" } },
+      { widget: "max_zoom", label: "Max zoom", suffix: "%" },
+    ],
+  },
+  // a, b and c are socket-only inputs (forceInput), so the card is the
+  // expression alone; the values arrive on the node's left edge.
+  ZZM_NODES_MathExpression: {
+    minWidth: 300,
+    rows: [{ widget: "expression", label: "f(a, b, c)", placeholder: "a + b" }],
+  },
+  ZZM_NODES_SelectEveryNth: { minWidth: 280, rows: [{ widget: "nth", label: "Every nth" }, { widget: "offset", label: "Offset" }] },
+  ZZM_NODES_SplitBatch: { minWidth: 280, rows: [{ widget: "index", label: "Split after" }] },
+  ZZM_NODES_MergeBatches: { minWidth: 300, rows: [{ widget: "on_mismatch", label: "Mismatch", kind: "segment", labels: { "resize to a": "match a", "resize to b": "match b" }, titles: { "resize to a": "resize b to a's size", "resize to b": "resize a to b's size", error: "停下来" } }] },
+  // Like ComfyUI's own Primitive node, both take over the limits of the
+  // input they are wired to: wired to a sampler's denoise, Float stops at 1.
+  // A new box also takes the value of the first input it is wired to
+  // (`takesWired`), so wiring it up does not change that setting. The gear
+  // picks the look; big is one large centred number.
+  ZZM_NODES_Integer: {
+    minWidth: 260, takesWired: "value", look: textLook, corner: numberLookCorner,
+    rows: [{ widget: "value", label: "Value", limits: wiredLimits, looks: { big: { height: 56 } } }],
+  },
+  ZZM_NODES_Float: {
+    minWidth: 260, takesWired: "value", look: textLook, corner: numberLookCorner,
+    rows: [{ widget: "value", label: "Value", decimals: 3, trimZeros: true, limits: wiredLimits, looks: { big: { height: 56 } } }],
+  },
+  // The gear picks the look; big is a compact field of large centred
+  // letters, for a word or two over a picture.
+  ZZM_NODES_Text: {
+    minWidth: 300, look: textLook, corner: textLookCorner,
+    rows: [{ widget: "text", kind: "textarea", placeholder: "Prompt, caption, or shared text", height: 100, grow: true,
+      looks: { big: { height: 62, placeholder: "type here" } } }],
+  },
+  // All the words go in the box, and the strip under it shows when each
+  // moment plays. The pictures, the video, the voice and the song arrive on
+  // sockets, and each picture's job sits under the words.
+  ZZM_NODES_H3PromptWriter: {
+    minWidth: 420,
+    hide: ["job_1", "job_2", "job_3", "job_4", "video_job"],
+    socketless: ["job_1", "job_2", "job_3", "job_4", "video_job"],
+    resetUnknown: { sound: "", music: "" },
+    rows: [
+      { section: "What happens" },
+      {
+        widget: "script", kind: "textarea", height: 118, grow: true,
+        placeholder: "@1 walks through a crowded night market.\n\n@1 stands on a rooftop in the rain.\n\nOne line for each thing that happens. A blank line cuts to a new place. @1 is Picture 1.",
+      },
+      { panel: momentStrip, height: 76 },
+      { widget: "sound", label: "Sound", placeholder: "rain on a window" },
+      { widget: "music", label: "Music", placeholder: "slow piano: music makes it louder" },
+      { section: "Pictures and settings" },
+      { panel: castChips, height: 30 },
+      { widget: "seconds", label: "Length", suffix: "s" },
+      { widget: "camera", label: "Camera", kind: "select" },
+      { widget: "look", label: "Look", kind: "select" },
+      { group: "more", label: "More" },
+      { widget: "song_start", label: "Song starts at", suffix: "s", decimals: 1, trimZeros: true, group: "more" },
+      { widget: "cut_on_beat", label: "Moments on the beat", group: "more" },
+      { widget: "language", label: "Language", group: "more" },
+    ],
+  },
+  // Saved by a 1.x release, these two hold that empty value too and open
+  // with preview on, like Mask Refine.
+  ZZM_NODES_SelectFrame: { minWidth: 280, first: true, resetUnknown: { preview: true }, rows: [{ widget: "frame_number", label: "Frame" }] },
+  ZZM_NODES_LaMaInpaint: { minWidth: 280, first: true, resetUnknown: { preview: true }, rows: [{ widget: "model", label: "Model", kind: "select" }] },
+  ZZM_NODES_Krea2OutpaintModelPatch: {
+    minWidth: 320,
+    rows: [
+      { widget: "placement", label: "Reference", kind: "segment", labels: { "source rectangle": "source rect", "whole canvas": "whole canvas" } },
+      { widget: "kv_cache", label: "KV cache", onText: "once per run", offText: "every step" },
+    ],
+  },
+  ZZM_NODES_Krea2Encode: {
+    minWidth: 320,
+    rows: [
+      { widget: "prompt", kind: "textarea", placeholder: "Prompt - describe the whole finished canvas", height: 96, grow: true },
+      { widget: "negative_prompt", kind: "textarea", placeholder: "Negative prompt (ignored at CFG 1)", height: 44 },
+      { widget: "vlm_reference", label: "VLM reference", title: "On, the vision tower also sees the reference images. Use on for AnyPaint with a whole-canvas reference; use off for Registered Outpaint with a source-rectangle reference. Match the adapter's conditioning contract." },
+    ],
+  },
+  ZZM_NODES_LoadVideo: {
+    minWidth: 320, first: true, hide: ["upload"],
+    rows: [
+      { widget: "video", label: "Source", kind: "select", preview: { kind: "video", url: viewUrl },
+        button: { text: "Upload", title: "Upload a video into ComfyUI's input folder", onClick: (node) => node.widgets?.find((w) => w.name === "upload")?.callback?.() } },
+      { widget: "custom_width", label: "Width", suffix: "px", title: "0 keeps the source width; set one side only to keep the aspect." },
+      { widget: "custom_height", label: "Height", suffix: "px", title: "0 keeps the source height; set one side only to keep the aspect." },
+      { widget: "every_nth", label: "Every nth" },
+      { widget: "max_frames", label: "Limit" },
+    ],
+  },
+  ZZM_NODES_LoadAudio: {
+    // The wave, IN and OUT live in the panel under the card (js/load_audio).
+    minWidth: 280, first: true, hide: ["upload"],
+    rows: [
+      { widget: "audio", label: "Source", kind: "select",
+        button: { text: "Upload", title: "Upload a sound file into ComfyUI's input folder", onClick: (node) => node.widgets?.find((w) => w.name === "upload")?.callback?.() } },
+      { widget: "max_seconds", label: "Max length", suffix: "s", decimals: 1, trimZeros: true,
+        title: "The longest the sound may be. Anything past it is cut off and shows in red. 0 means no limit." },
+    ],
+  },
+  ZZM_NODES_LoadImagePad: {
+    minWidth: 340, first: true, hide: ["upload"],
+    rows: [
+      { widget: "image", label: "Source", kind: "select", preview: { kind: "image", url: viewUrl }, linkedBy: ["source_image"],
+        button: { text: "Upload", title: "Upload an image into ComfyUI's input folder", onClick: (node) => node.widgets?.find((w) => w.name === "upload")?.callback?.() } },
+      { widget: "mode", label: "Fill", kind: "select" },
+      { widget: "fill_color", label: "Color", kind: "color", when: isMode("mode", "color") },
+      { widget: "backdrop_blur", label: "Backdrop", when: isMode("mode", "pillarbox blur") },
+      { widget: "feather", label: "Feather", suffix: "px" },
+      { widget: "canvas_multiple", label: "Multiple", snap: true, step: 8 },
+      { widget: "target_megapixels", label: "Budget", suffix: "MP" },
+      { group: "padding", label: "Exact padding" },
+      { widget: "pad_left", label: "Left", suffix: "px", group: "padding" },
+      { widget: "pad_top", label: "Top", suffix: "px", group: "padding" },
+      { widget: "pad_right", label: "Right", suffix: "px", group: "padding" },
+      { widget: "pad_bottom", label: "Bottom", suffix: "px", group: "padding" },
+    ],
+  },
+  ZZM_NODES_SaveVideo: {
+    // step_preview is the STEPS button on the player (js/save_video).
+    minWidth: 320, first: true, hide: ["step_preview"],
+    rows: [
+      { widget: "filename_prefix", label: "Prefix", placeholder: "video" },
+      { widget: "format", label: "Format", kind: "select" },
+      // CRF and Metadata show only for the formats that read them; fps keeps
+      // its lifted socket either way.
+      { pair: ["fps", "crf"], label: "FPS · CRF", sep: "·", top: true, when: formatReads("crf") },
+      { widget: "fps", label: "FPS", top: true, when: (values) => !formatReads("crf")(values) },
+      { widget: "pingpong", label: "Ping-pong", onText: "forward, back", offText: "off" },
+      { widget: "save_metadata", label: "Metadata", when: formatReads("save_metadata"), title: "On embeds the workflow in the video file, so dropping the file back on the canvas restores the graph that made it." },
+    ],
+  },
+};
+
+function cardWidgetNames(config) {
+  return [...config.rows.flatMap((row) => row.pair ?? (row.widget ? [row.widget] : [])), ...(config.hide ?? [])];
+}
+
+app.registerExtension({
+  name: "zzmaus.widget_cards",
+  // The widgets of the inputs a card lists as socketless (markSocketless in
+  // shared/widget_card_math.mjs): the stock ones, marked socketless so the
+  // frontend gives them no input slot - no dot to draw or aim at in either
+  // renderer, no row to reserve.
+  getCustomWidgets() {
+    return {
+      // inputData is the input's spec: its options hold the choices.
+      [SOCKETLESS_CHOICE](node, inputName, inputData) {
+        const spec = inputData?.[1] ?? {};
+        const values = Array.isArray(spec.options) ? spec.options : Array.isArray(inputData?.[0]) ? inputData[0] : [];
+        const widget = node.addWidget("combo", inputName, spec.default ?? values[0], () => {}, { values });
+        widget.options.socketless = true;
+        return { widget };
+      },
+      // A one-line STRING, as the stock text widget is made.
+      [SOCKETLESS_TEXT](node, inputName, inputData) {
+        const spec = inputData?.[1] ?? {};
+        const widget = node.addWidget("text", inputName, spec.default ?? "", () => {}, {});
+        if (typeof spec.dynamicPrompts === "boolean") widget.dynamicPrompts = spec.dynamicPrompts;
+        widget.options.socketless = true;
+        return { widget };
+      },
+    };
+  },
+  beforeRegisterNodeDef(nodeType, nodeData) {
+    const config = CARDS[nodeData?.name];
+    if (!config) return;
+    hideInputsInDef(nodeData, cardWidgetNames(config));
+    if (config.socketless?.length) {
+      markSocketless(nodeData, config.socketless);
+      // A workflow saved while the widget still had a socket brings the
+      // empty slot back with it; an unlinked one goes again.
+      chainCallback(nodeType.prototype, "onConfigure", function () {
+        for (let index = (this.inputs?.length ?? 0) - 1; index >= 0; index -= 1) {
+          const input = this.inputs[index];
+          const linked = typeof this.isInputConnected === "function" ? this.isInputConnected(index) : input?.link != null;
+          if (config.socketless.includes(input?.widget?.name) && !linked) {
+            this.removeInput(index);
+          }
+        }
+      });
+    }
+    if (config.resetUnknown) {
+      // Positional widget values from an older save can land a value that is
+      // not one of a choice's options, or not on/off for a switch; put the
+      // default back before the card draws it, so the graph queues what the
+      // user sees.
+      chainCallback(nodeType.prototype, "onConfigure", function () {
+        resetUnknownValues(this.widgets, config.resetUnknown);
+      });
+    }
+    if (config.takesWired) {
+      // Only a box made by hand is "new": one that came with a workflow or a
+      // paste was configured, and keeps the value it was saved with.
+      const initial = nodeData?.input?.required?.[config.takesWired]?.[1]?.default ?? 0;
+      chainCallback(nodeType.prototype, "onNodeCreated", function () { this.__zzmausNew = true; });
+      chainCallback(nodeType.prototype, "onConfigure", function () { this.__zzmausNew = false; });
+      chainCallback(nodeType.prototype, "onConnectionsChange", function (type, _slot, connected) {
+        if (type !== (globalThis.LiteGraph?.OUTPUT ?? 2) || !connected) return;
+        const widget = this.widgets?.find((entry) => entry.name === config.takesWired);
+        const take = valueToTake({
+          fresh: this.__zzmausNew, value: widget?.value, initial,
+          wires: this.outputs?.[0]?.links?.length ?? 0, wired: wiredLimits(this),
+        });
+        this.__zzmausNew = false;
+        if (take !== null && widget) commitWidgetValue(this, widget, take, app.canvas);
+      });
+    }
+    chainCallback(nodeType.prototype, "onNodeCreated", function () {
+      if (this.__zzmausCard) return;
+      mountWidgetCard(this, config);
+      const width = Math.max(this.size?.[0] || 0, config.minWidth ?? 300);
+      this.setSize?.([width, this.computeSize?.()[1] || this.size?.[1] || 0]);
+    });
+  },
+});

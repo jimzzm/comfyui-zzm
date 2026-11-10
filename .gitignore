@@ -1,0 +1,17 @@
+# ---- 运行状态（含本机绝对路径，不入库）----
+comfyui_zzm_db.json
+comfyui_zzm_history.json
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ---- 环境 / 编辑器 ----
+.venv/
+venv/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

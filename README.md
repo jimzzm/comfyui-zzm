@@ -26,7 +26,6 @@ ComfyUI/custom_nodes/zzm-toolbox
 | 遮罩填洞                | `ZZM Mask Fill Holes`   | 填掉遮罩里的孔洞                    |
 | 多段提示词（逐条）           | `ZZM Prompt List`       | 一段文本切成 N 条，一条跑完自动排下一条       |
 | 多段提示词·列表模式          | `ZZM Prompt List Batch` | 一次把 N 条全展开（会占显存）            |
-| 递增种子                | `ZZM Seed Increment`    | 按序号递增种子                     |
 | 图片文件夹               | `ZZM_NODES_ImageFolder` | 从 input / output 目录挑图，批量出图  |
 | LoRA 加载器            | `ZZM_NODES_LoraLoader`  | 多 LoRA 叠加，带触发词输出            |
 | 保存图片                | `ZZM_NODES_SaveImage`   | 存图，可沿用源文件名、写说明文字            |
@@ -65,15 +64,11 @@ ComfyUI/custom_nodes/zzm-toolbox
 | 提示词  | 当前这一条          |
 | 段数   | 一共切出多少条        |
 | 分段预览 | 切分结果预览         |
-| 序号   | 当前条序号，可接「递增种子」 |
+| 序号   | 当前条序号，可接「保存图片」 |
 
 ## 多段提示词·列表模式
 
 同样的切分逻辑，但一次把 N 条全部输出成列表（`OUTPUT_IS_LIST`）。**所有结果会驻留内存**，条数多时注意显存。
-
-## 递增种子
-
-`种子 = 起始种子 + (序号 - 1) × 步长`。把「多段提示词」的「序号」接进来，每条自动换种子；步长填 0 就是每条同一种子。
 
 ## 图片文件夹
 
@@ -120,7 +115,7 @@ zzm-toolbox/
 ├── __init__.py                  节点注册、前端目录声明
 ├── nodes_resolution.py          图像分辨率
 ├── nodes_mask_fill_holes.py     遮罩填洞
-├── nodes_prompt_list.py         多段提示词 ×3
+├── nodes_prompt_list.py         多段提示词 ×2
 ├── ausport/
 │   ├── node_image_folder.py     图片文件夹
 │   ├── node_lora_loader.py      LoRA 加载器

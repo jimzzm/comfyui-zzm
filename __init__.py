@@ -6,7 +6,6 @@ zzm 工具箱 — ComfyUI 自定义节点合集
   ZZM Mask Fill Holes      遮罩填洞
   ZZM Prompt List          多段提示词（逐条）
   ZZM Prompt List Batch    多段提示词·列表模式
-  ZZM Seed Increment       递增种子
   ZZM_NODES_ImageFolder    Image Folder（图像 / 遮罩 / 文件名 / 序号 / 总数）
   ZZM_NODES_LoraLoader     LoRA Loader
   ZZM_NODES_SaveImage      Save Image
@@ -28,7 +27,7 @@ WEB_DIRECTORY = "./web"
 
 from .nodes_resolution import AspectRatio
 from .nodes_mask_fill_holes import MaskFillHoles
-from .nodes_prompt_list import PromptList, PromptListBatch, SeedIncrement, install_queue_hook
+from .nodes_prompt_list import PromptList, PromptListBatch, install_queue_hook
 from .ausport import NODE_CLASS_MAPPINGS as _AUS_MAP
 from .ausport import NODE_DISPLAY_NAME_MAPPINGS as _AUS_NAME
 
@@ -40,7 +39,6 @@ NODE_CLASS_MAPPINGS = {
     "ZZM Mask Fill Holes": MaskFillHoles,
     "ZZM Prompt List": PromptList,
     "ZZM Prompt List Batch": PromptListBatch,
-    "ZZM Seed Increment": SeedIncrement,
     **_AUS_MAP,
 }
 
@@ -49,7 +47,6 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ZZM Mask Fill Holes": "遮罩填洞",
     "ZZM Prompt List": "多段提示词（逐条）",
     "ZZM Prompt List Batch": "多段提示词·列表模式",
-    "ZZM Seed Increment": "递增种子",
     **_AUS_NAME,
 }
 

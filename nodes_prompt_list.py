@@ -252,7 +252,7 @@ class PromptList:
         "逐条模式：每次只把一段送进工作流，整条链跑完存完图，内核自动排下一段。\n"
         "· 一次点击 = 依次出 N 张，每张独立执行，显存/内存不累积（58 条也不会爆）\n"
         "· 某一条失败或你点了取消，队列就停在那里，不会继续往下排\n"
-        "· 「当前索引」可以从中间开始跑；「序号」输出可接「递增种子」和「保存图像」\n"
+        "· 「当前索引」可以从中间开始跑；「序号」输出可接「保存图片」等需要当前条号的节点\n"
         "· 分隔方式：自动（默认，有空行按空行、没空行按换行）/ 空行 / 每行一段 / 空格 / 自定义"
     )
 
@@ -353,45 +353,3 @@ class PromptListBatch:
         print(f"[AI-zzm] 列表模式：{len(out)} 段（注意：全部驻留内存）")
         return (out, len(out), _preview(out))
 
-
-# ---------------------------------------------------------------------------
-# 递增种子：序号 → 种子，配合逐条模式让每条用不同种子
-# ---------------------------------------------------------------------------
-class SeedIncrement:
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "起始种子": ("INT", {
-                    "default": 0, "min": 0, "max": UINT64_MAX,
-                    "control_after_generate": False,
-                }),
-                "步长": ("INT", {
-                    "default": 1, "min": 0, "max": UINT64_MAX,
-                    "control_after_generate": False,
-                }),
-            },
-            "optional": {
-                "序号": ("INT", {
-                    "default": 1, "min": 1, "max": 9999, "step": 1,
-                }),
-            },
-        }
-
-    RETURN_TYPES = ("INT",)
-    RETURN_NAMES = ("种子",)
-    FUNCTION = "calc"
-    CATEGORY = "⚡ zzm工具箱"
-    SEARCH_ALIASES = ["zzm", "seed", "种子", "递增", "seed increment"]
-    DESCRIPTION = (
-        "种子 = 起始种子 + (序号-1) × 步长。\n"
-        "把「多段提示词」的「序号」输出接进来，每条自动用不同种子；步长填 0 = 每条同一种子。\n"
-        "输出接到 KSampler 的 seed 上。"
-    )
-
-    def calc(self, 起始种子, 步长, 序号=1):
-        i = max(1, _as_int(_as_scalar(序号, 1), 1))
-        start = _as_int(_as_scalar(起始种子, 0), 0)
-        step = _as_int(_as_scalar(步长, 1), 1)
-        seed = (start + (i - 1) * step) & UINT64_MAX
-        return (seed,)

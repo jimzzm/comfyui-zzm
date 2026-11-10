@@ -123,7 +123,7 @@ ComfyUI/custom_nodes/zzm-toolbox
 | VAE | `flux2-vae.safetensors` | `models/vae/` |
 | LoRA | `lodestones-8-steps-dmd2-lora-*.safetensors` | `models/loras/Moss/` |
 
-流程：加载 CLIP / UNET / VAE → LoRA 加载器 → **多段提示词（逐条）** 把文本按空行切成多段 → **图像分辨率** 给出 512×512 → KSampler（4 步、CFG 1.0、euler / simple）→ 保存图片。
+流程：加载 CLIP / UNET / VAE → LoRA 加载器 → **多段提示词（逐条）** 把文本按空行切成多段 → **图像分辨率** 给出 1024×1024 → KSampler（4 步、CFG 1.0、euler / simple）→ 保存图片。
 
 点一次 Run 会依次跑完所有段落（一条跑完自动排下一条，显存占用等同单张）。想从某一段开始，把「多段提示词」的「当前索引」改成对应条号；想中途停下就点取消。
 

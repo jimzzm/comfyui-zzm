@@ -78,18 +78,11 @@ function buildPanel(node, w) {
 
   // 顶部条
   const top = el("div", "zzm-top");
-  const fold = el("button", "zzm-fold");
-  fold.type = "button";
-  fold.title = "折叠 / 展开";
-  fold.appendChild(el("i"));
   const title = el("div", "", "多段提示词");
-  title.style.cssText = "font-size:12px;font-weight:600;color:var(--zzm-text,#edeef0);margin-left:2px;flex:0 0 auto;";
+  title.style.cssText = "font-size:12px;font-weight:600;color:var(--zzm-text,#edeef0);flex:0 0 auto;";
   const badge = el("div", "zzm-badge", "共 0 段");
   badge.style.marginLeft = "auto";
-  const gear = el("button", "zzm-gear", "⚙");
-  gear.type = "button";
-  gear.title = "把当前分段结果打印到浏览器控制台";
-  top.append(fold, title, badge, gear);
+  top.append(title, badge);
 
   // 文本
   const ta = el("textarea", "zzm-field ta mono");
@@ -263,20 +256,6 @@ function buildPanel(node, w) {
 
   ta.addEventListener("input", () => { setW("文本", ta.value); refresh(); });
   idxNum.input.addEventListener("change", refresh);
-  fold.onclick = () => {
-    const collapsed = !node.flags?.collapsed;
-    node.flags = node.flags || {};
-    node.flags.collapsed = collapsed;
-    fold.classList.toggle("folded", collapsed);
-    node.setDirtyCanvas?.(true, true);
-  };
-  gear.onclick = () => {
-    const segs = computeSegments(values());
-    console.group?.("[AI-zzm] 多段提示词：" + segs.length + " 段");
-    segs.forEach((s, i) => console.log(String(i + 1).padStart(2, "0"), s));
-    console.groupEnd?.();
-    badge.textContent = `共 ${segs.length} 段（详见控制台）`;
-  };
 
   root._zzm = { ta, syncFromWidgets, refresh, get count() { return lastCount; } };
   return root;

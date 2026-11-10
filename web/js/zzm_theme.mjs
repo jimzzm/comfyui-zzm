@@ -152,15 +152,6 @@ const CSS = `
   padding:8px 10px 6px;box-sizing:border-box;overflow:hidden;}
 
 .zzm-top{display:flex;align-items:center;gap:6px;flex:0 0 auto;margin:-4px 0 -2px;}
-.zzm-fold,.zzm-gear{width:24px;height:22px;border:none;border-radius:4px;cursor:pointer;
-  display:inline-flex;align-items:center;justify-content:center;padding:0;flex:0 0 auto;
-  background:transparent;color:var(--zzm-dim,#b0b4ba);font-size:12px;font-family:inherit;}
-.zzm-fold{background:var(--zzm-acc,#C05C43);}
-.zzm-fold:hover{background:var(--zzm-acc-hi,#ff801f);}
-.zzm-fold i{display:block;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;}
-.zzm-fold:not(.folded) i{border-bottom:6px solid #fff;}
-.zzm-fold.folded i{border-top:6px solid #fff;}
-.zzm-gear:hover{color:var(--zzm-acc,#C05C43);}
 
 .zzm-lab{display:block;font-size:11px;font-weight:600;letter-spacing:.06em;
   color:var(--zzm-acc-text,#ffa057);margin-bottom:3px;flex:0 0 auto;}

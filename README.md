@@ -121,13 +121,13 @@ ComfyUI/custom_nodes/zzm-toolbox
 | UNET | `moss_image_sft_int8_convrot.safetensors` | `models/diffusion_models/Moss/` |
 | CLIP | `qwen3.5_9b_int8_convrot.safetensors` | `models/text_encoders/` |
 | VAE | `flux2-vae.safetensors` | `models/vae/` |
-| LoRA | `lodestones-8-steps-dmd2-lora-*.safetensors` | `models/loras/Moss/` |
+| LoRA | `moss_image_sft_4_steps_lora_v2_*.safetensors`（启用）<br>`lodestones-8-steps-dmd2-lora_*.safetensors`（停用，备用） | `models/loras/Moss/` |
 
-流程：加载 CLIP / UNET / VAE → LoRA 加载器 → **多段提示词（逐条）** 把文本按空行切成多段 → **图像分辨率** 给出 1024×1024 → KSampler（4 步、CFG 1.0、euler / simple）→ 保存图片。
+流程：加载 CLIP / UNET / VAE → LoRA 加载器 → **多段提示词（逐条）** 把文本按空行切成多段 → **图像分辨率** 给出 1024×1536（2:3 / 1.5 百万像素 / 倍数 32）→ KSampler（4 步、CFG 1.0、euler / simple）→ 保存图片。
 
 点一次 Run 会依次跑完所有段落（一条跑完自动排下一条，显存占用等同单张）。想从某一段开始，把「多段提示词」的「当前索引」改成对应条号；想中途停下就点取消。
 
-> 工作流里的提示词是示例文案，换成自己的即可。
+> 工作流里带了 8 段完整提示词，clone 后把模型放好就能直接跑；换成自己的文案也行，空行分隔即可。
 
 ## 目录结构
 

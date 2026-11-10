@@ -1,0 +1,980 @@
+{
+  "id": "b8c8ff05-0394-4dfb-81b0-7658db49e1ad",
+  "revision": 2,
+  "last_node_id": 91,
+  "last_link_id": 217,
+  "nodes": [
+    {
+      "id": 16,
+      "type": "KSampler",
+      "pos": [
+        50,
+        120
+      ],
+      "size": [
+        305,
+        475
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 205
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 69
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 71
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 209
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            22
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.40.0",
+        "Node name for S&R": "KSampler",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        705250032213555,
+        "randomize",
+        4,
+        1,
+        "euler",
+        "simple",
+        1
+      ],
+      "widgets_values_named": {
+        "seed": 705250032213555,
+        "control_after_generate": "randomize",
+        "steps": 4,
+        "cfg": 1,
+        "sampler_name": "euler",
+        "scheduler": "simple",
+        "denoise": 1
+      },
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 17,
+      "type": "VAEDecode",
+      "pos": [
+        225,
+        740
+      ],
+      "size": [
+        140,
+        50
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 22
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 162
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "slot_index": 0,
+          "links": [
+            196
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.40.0",
+        "Node name for S&R": "VAEDecode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 25,
+      "type": "VAELoader",
+      "pos": [
+        -1450,
+        755
+      ],
+      "size": [
+        515,
+        60
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            162
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.40.0",
+        "Node name for S&R": "VAELoader",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "flux2-vae.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "flux2-vae.safetensors"
+      },
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 31,
+      "type": "CLIPLoader",
+      "pos": [
+        -1450,
+        570
+      ],
+      "size": [
+        515,
+        110
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "slot_index": 0,
+          "links": [
+            206
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "CLIPLoader",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "qwen3.5_9b_int8_convrot.safetensors",
+        "moss_image",
+        "default"
+      ],
+      "widgets_values_named": {
+        "clip_name": "qwen3.5_9b_int8_convrot.safetensors",
+        "type": "moss_image",
+        "device": "default"
+      },
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 44,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -355,
+        110
+      ],
+      "size": [
+        320,
+        155
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 206
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 217
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            69,
+            70
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "CLIPTextEncode",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        ""
+      ],
+      "widgets_values_named": {
+        "text": ""
+      },
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 45,
+      "type": "ConditioningZeroOut",
+      "pos": [
+        -200,
+        360
+      ],
+      "size": [
+        205,
+        30
+      ],
+      "flags": {
+        "collapsed": true
+      },
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 70
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            71
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.41.0",
+        "Node name for S&R": "ConditioningZeroOut",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 64,
+      "type": "UNETLoader",
+      "pos": [
+        -1455,
+        95
+      ],
+      "size": [
+        515,
+        90
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            204
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.43.0",
+        "Node name for S&R": "UNETLoader",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "8.0"
+        }
+      },
+      "widgets_values": [
+        "Moss\\moss_image_sft_int8_convrot.safetensors",
+        "default"
+      ],
+      "widgets_values_named": {
+        "unet_name": "Moss\\moss_image_sft_int8_convrot.safetensors",
+        "weight_dtype": "default"
+      },
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 77,
+      "type": "ZZM_NODES_SaveImage",
+      "pos": [
+        425,
+        110
+      ],
+      "size": [
+        360,
+        700
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "图像",
+          "name": "images",
+          "type": "IMAGE",
+          "link": 196
+        },
+        {
+          "label": "文件名",
+          "name": "filename",
+          "shape": 7,
+          "type": "STRING",
+          "link": null
+        },
+        {
+          "label": "说明文字输入",
+          "name": "caption_text",
+          "shape": 7,
+          "type": "STRING",
+          "link": null
+        },
+        {
+          "label": "文件名前缀",
+          "name": "filename_prefix",
+          "type": "STRING",
+          "widget": {
+            "name": "filename_prefix"
+          },
+          "link": null
+        },
+        {
+          "label": "格式",
+          "name": "format",
+          "type": "COMBO",
+          "widget": {
+            "name": "format"
+          },
+          "link": null
+        },
+        {
+          "label": "保存元数据",
+          "name": "save_metadata",
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "save_metadata"
+          },
+          "link": null
+        },
+        {
+          "label": "精确文件名",
+          "name": "exact_name",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "exact_name"
+          },
+          "link": null
+        },
+        {
+          "label": "同名处理",
+          "name": "on_existing",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "on_existing"
+          },
+          "link": null
+        },
+        {
+          "label": "输出子目录",
+          "name": "output_dir",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "output_dir"
+          },
+          "link": null
+        },
+        {
+          "label": "说明文字",
+          "name": "caption",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "caption"
+          },
+          "link": null
+        },
+        {
+          "label": "名称计数器",
+          "name": "name_counter",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "name_counter"
+          },
+          "link": null
+        },
+        {
+          "label": "名称带日期",
+          "name": "name_date",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "name_date"
+          },
+          "link": null
+        },
+        {
+          "label": "名称带时间",
+          "name": "name_time",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "name_time"
+          },
+          "link": null
+        },
+        {
+          "label": "名称带尺寸",
+          "name": "name_size",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "name_size"
+          },
+          "link": null
+        },
+        {
+          "label": "名称带批次号",
+          "name": "name_batch",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "name_batch"
+          },
+          "link": null
+        },
+        {
+          "label": "预览",
+          "name": "preview",
+          "shape": 7,
+          "type": "BOOLEAN",
+          "widget": {
+            "name": "preview"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "文件路径",
+          "type": "STRING",
+          "links": []
+        },
+        {
+          "name": "图像",
+          "type": "IMAGE",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ZZM_NODES_SaveImage",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "8.0"
+        }
+      },
+      "widgets_values": [
+        "Moss-SFT",
+        "png",
+        true,
+        "",
+        "覆盖",
+        "Moss-SFT",
+        "",
+        true,
+        false,
+        false,
+        false,
+        false,
+        true
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "Moss-SFT",
+        "format": "png",
+        "save_metadata": true,
+        "exact_name": "",
+        "on_existing": "覆盖",
+        "output_dir": "Moss-SFT",
+        "caption": "",
+        "name_counter": true,
+        "name_date": false,
+        "name_time": false,
+        "name_size": false,
+        "name_batch": false,
+        "preview": true
+      },
+      "color": "#233",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 85,
+      "type": "ZZM_NODES_LoraLoader",
+      "pos": [
+        -1450,
+        260
+      ],
+      "size": [
+        515,
+        224
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "label": "模型",
+          "name": "model",
+          "type": "MODEL",
+          "link": 204
+        },
+        {
+          "label": "CLIP",
+          "name": "clip",
+          "shape": 7,
+          "type": "CLIP",
+          "link": null
+        },
+        {
+          "label": "LoRA 栈",
+          "name": "loras",
+          "type": "STRING",
+          "widget": {
+            "name": "loras"
+          },
+          "link": null
+        },
+        {
+          "label": "触发词分隔符",
+          "name": "trigger_separator",
+          "shape": 7,
+          "type": "STRING",
+          "widget": {
+            "name": "trigger_separator"
+          },
+          "link": null
+        },
+        {
+          "label": "缺文件时",
+          "name": "on_missing",
+          "shape": 7,
+          "type": "COMBO",
+          "widget": {
+            "name": "on_missing"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "模型",
+          "type": "MODEL",
+          "links": [
+            205
+          ]
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": []
+        },
+        {
+          "name": "触发词",
+          "type": "STRING",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ZZM_NODES_LoraLoader",
+        "zzmausLoraLinked": true,
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "8.0"
+        }
+      },
+      "widgets_values": [
+        "[{\"id\":\"rmw6qw6hq51\",\"name\":\"Moss\\\\lodestones-8-steps-dmd2-lora_resized_from_128_to_dynamic_69.safetensors\",\"strength\":0.7,\"strength_clip\":0.7,\"enabled\":false,\"triggers\":\"\"},{\"id\":\"rmw6qwbnp52\",\"name\":\"Moss\\\\moss_image_sft_4_steps_lora_v2_600_avg_rank_72_bf16.safetensors\",\"strength\":1,\"strength_clip\":1,\"enabled\":true,\"triggers\":\"\"}]",
+        ", ",
+        "报错"
+      ],
+      "widgets_values_named": {
+        "loras": "[{\"id\":\"rmw6qw6hq51\",\"name\":\"Moss\\\\lodestones-8-steps-dmd2-lora_resized_from_128_to_dynamic_69.safetensors\",\"strength\":0.7,\"strength_clip\":0.7,\"enabled\":false,\"triggers\":\"\"},{\"id\":\"rmw6qwbnp52\",\"name\":\"Moss\\\\moss_image_sft_4_steps_lora_v2_600_avg_rank_72_bf16.safetensors\",\"strength\":1,\"strength_clip\":1,\"enabled\":true,\"triggers\":\"\"}]",
+        "trigger_separator": ", ",
+        "on_missing": "报错"
+      },
+      "color": "#323",
+      "bgcolor": "#535"
+    },
+    {
+      "id": 87,
+      "type": "ZZM Aspect Ratio",
+      "pos": [
+        -320,
+        425
+      ],
+      "size": [
+        270,
+        265
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "label": "512 宽度",
+          "name": "宽度",
+          "type": "INT",
+          "links": []
+        },
+        {
+          "label": "512 高度",
+          "name": "高度",
+          "type": "INT",
+          "links": []
+        },
+        {
+          "name": "批量大小",
+          "type": "INT",
+          "links": []
+        },
+        {
+          "name": "Latent图像",
+          "type": "LATENT",
+          "links": [
+            209
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ZZM Aspect Ratio",
+        "ue_properties": {
+          "version": "8.0.1",
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "title_regex": null,
+          "input_regex": null,
+          "group_regex": null,
+          "title_regex_invert": false,
+          "input_regex_invert": false,
+          "group_regex_invert": false,
+          "apply_to_unrepeated": 0,
+          "send_to_any": 0,
+          "string_to_combo": 0,
+          "repeated_type_rule": 0,
+          "group_restricted": 0,
+          "color_restricted": 0
+        }
+      },
+      "widgets_values": [
+        1024,
+        1536,
+        "1:1（方形）",
+        1,
+        0.25,
+        "8"
+      ],
+      "widgets_values_named": {
+        "宽度": 1024,
+        "高度": 1536,
+        "宽高比": "512×512（1:1）",
+        "批量大小": 1,
+        "百万像素": 1,
+        "倍数": "32"
+      },
+      "color": "#C05C43",
+      "bgcolor": "#355"
+    },
+    {
+      "id": 91,
+      "type": "ZZM Prompt List",
+      "pos": [
+        -830,
+        105
+      ],
+      "size": [
+        375,
+        620
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "提示词",
+          "type": "STRING",
+          "links": [
+            217
+          ]
+        },
+        {
+          "name": "段数",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "分段预览",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "序号",
+          "type": "INT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "ue_properties": {
+          "version": "8.0.1",
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "title_regex": null,
+          "input_regex": null,
+          "group_regex": null,
+          "title_regex_invert": false,
+          "input_regex_invert": false,
+          "group_regex_invert": false,
+          "apply_to_unrepeated": 0,
+          "send_to_any": 0,
+          "string_to_combo": 0,
+          "repeated_type_rule": 0,
+          "group_restricted": 0,
+          "color_restricted": 0
+        },
+        "Node name for S&R": "ZZM Prompt List"
+      },
+      "widgets_values": [
+        "一位年轻女性坐在白色花园长椅上，穿粉色连衣裙，怀里抱着一只毛绒兔子，身后是盛开的波斯菊。柔和的日光，浅景深，写实摄影。\n\n一位年轻女性站在露台栏杆边，穿浅粉色短裙，微风拂动长发。晴天，背景是虚化的屋顶和网球场。\n\n一位年轻女性坐在木质露台上，穿米色针织衫，手拿玻璃杯微笑。暖调光线，生活感抓拍。",
+        "自动（空行优先，无空行按换行）",
+        "---",
+        1,
+        "",
+        "",
+        false,
+        0,
+        ""
+      ],
+      "widgets_values_named": {
+        "文本": "A young adult woman with long straight black hair, full bangs, and a black cat-ear headband trimmed with ivory lace looks toward the camera with a slight head tilt and softly pursed pink lips. She has pale matte skin, pink blush, and fine dark eyeliner. She wears a short black maid dress with puff sleeves, ivory ruffled shoulder trim, an oversized ivory neckline bow, a fitted ivory waistband, and a rounded ivory apron edged with ruffles. White thigh-high stockings have cream lace tops and small ribbon bows, paired with glossy dark burgundy loafers with block heels. Her right hand lifts the skirt outward on the left side of the image, while her left arm hangs beside her thigh with relaxed spread fingers; her knees angle inward in a playful standing pose. In the foreground, the curved front wall of a low white cylindrical display platform meets the white studio floor. In the midground, she stands on the platform with both shoes fully visible. Behind her, a seamless white studio backdrop extends across the entire image with no visible furnishings or wall seams. Single full-body studio fashion photograph from a level, approximately waist-height viewpoint, with the subject near the center and ample white space above her head and around her silhouette. The platform forms a broad ellipse at the bottom, and the lifted skirt creates an asymmetric silhouette. The entire figure remains in focus. Broad diffuse studio light from the front and upper left creates gentle shading beneath the bangs, bow, apron ruffles, and skirt folds; faint gray contact shadows sit beneath the shoes and platform, with soft reflections on the polished leather. Smooth skin with softly rendered facial detail, individual glossy black hair strands, matte black dress fabric with gathered folds, ivory cotton apron and fine lace edging, translucent white stocking knit, and polished burgundy leather shoes. Playful, carefully posed costume fashion portrait with a restrained black and ivory palette, soft pink makeup, dark wine-colored footwear, and a bright white setting.\n\nA young adult woman with long straight chestnut-brown hair, wispy parted bangs, thin metal-framed glasses, softly defined eyeliner, light blush, and muted red lips smiles toward the camera with her head gently tilted. She stands with one leg slightly forward, her right arm relaxed beside her and her left hand resting near her waist. She wears a cream fitted knit top with a wide neckline, gathered shoulders and ribbed long sleeves, a narrow dark-brown waist belt with a dangling silver chain detail, a brown bias-cut plaid midi skirt, and tan slouchy suede boots whose feet extend beyond the lower frame. A leopard-print tote hangs from her left shoulder against her left hip. Foreground: a speckled gray terrazzo corridor floor fills the lower frame, bordered by dark stone skirting, with a dark reddish-brown open doorframe at the right edge. Midground: the woman stands between white corridor walls with pale gray lower wall panels; a glass-covered noticeboard holding paper notices occupies the right wall, with a small illuminated green emergency marker below it. Background: a broad rectangular doorway frames a darker continuation of the corridor, a black-framed window, and a suspended green exit sign above the passage. A single portrait-oriented outfit photograph taken by someone facing the subject, approximately eye-level with a slight downward view. The woman sits just right of center, with generous headroom and converging floor edges and wall panels leading toward the rear doorway. Her head, torso, skirt, and boot shafts remain visible, while the bottom edge cuts through the boots. The corridor stays recognizable with mild background softness. Broad soft interior light from above and the camera-facing corridor illuminates her face and cream knit, producing gentle shadows beneath her bangs, chin, sleeves, and skirt folds. The rear corridor is noticeably dimmer; green emergency signs provide small luminous accents without strongly coloring the subject. Casual digital fashion photography with natural skin texture, individually visible hair strands, fine knit ribbing, soft gathered fabric folds, intersecting plaid lines, a textured leopard-print tote, matte suede boot shafts, polished glass reflections, and fine terrazzo floor grain. Relaxed everyday outfit portrait in cream, chestnut brown, taupe, and muted gray, with restrained red-brown door trim and bright green emergency-sign accents.\n\nA young adult woman with fair skin and long, loosely flowing black hair parted near the center sits on a low wooden boardwalk railing, looking up toward the camera with a gentle, slightly parted-lip expression. She wears fine dark eyeliner, pink blush, and soft pink lip color. Her pale mint spaghetti-strap dress has a fitted bodice and a lightweight gathered skirt spreading across the railing beside her, paired with white open-toe slide sandals with bow-shaped straps, delicate layered necklaces, and a slim bracelet. She leans slightly forward, knees together and lower legs extending toward the foreground, with her hands loosely gathered around one knee. Foreground weathered gray timber decking and a broad brown railing run diagonally beneath her feet. In the midground she sits beside a rectangular opening onto clear turquoise lagoon water, enclosed by timber platforms supported on pale cylindrical posts. A raised overwater bungalow deck occupies the upper right, with a white wall, black vertical doorway slats, a thatched roof, and a white planter containing orange-red flowers. In the background a boardwalk recedes along the left toward rows of pale thatched overwater villas, scattered palms, a narrow ocean horizon, and large white clouds beneath blue sky. A single full-body travel portrait photographed by someone standing above the seated subject, with the camera tilted downward. The woman occupies the lower center-right, while turquoise water fills the central negative space and the left boardwalk creates strong converging lines toward the distant villas. Both sandals remain visible, with substantial resort scenery above her head and clear detail throughout the scene. Strong daylight enters from the upper left, illuminating the left deck planks, her face, shoulders, and knees. Her hair casts soft-edged shadows across the bodice, while the bungalow deck casts a broad dark shadow across the water on the right. Sunlight produces bright rippled patterns in the shallow lagoon and small highlights along her hair and jewelry. Digital travel photography with smooth skin rendering, individual dark hair strands, fine translucent dress folds, matte sandal straps, weathered timber grain, coarse thatched roofing, and transparent water revealing sandy patches below the ripples. Relaxed tropical holiday atmosphere with luminous turquoise and aqua water, pale mint fabric, white sandals and clouds, warm brown wood, silver-gray decking, and saturated blue sky.\n\nA young adult woman with long dark brown hair, a slightly off-center part and softly curved ends poses facing the camera with a calm, closed-mouth expression. She has softly defined brows, subtle eyeliner, light pink blush and muted rosy lips. She wears a strapless pale ivory fit-and-flare mini dress with a fitted paneled bodice, softly gathered neckline and a full skirt printed with lavender, pale blue and muted green floral motifs, a fine pendant necklace and delicate bracelets. Her shoulders are relaxed, one arm hangs beside her skirt and the other hand lightly holds its outer edge; her bare legs continue beyond the bottom edge, with footwear outside the frame. In the foreground, a weathered dark gray stone parapet crosses behind her hips, its flat cap scattered with fallen purple flowers. In the midground, she stands immediately in front of the parapet beneath thick twisting jacaranda branches and dense lavender blossoms. Beyond the wall, a grassy lakeside slope contains three small visitors: a woman in a pale dress at left and an adult beside a child in a pale pink dress near center-right. In the background, gray-green trees border pale blue lake water, with a low rust-colored sculptural form near the right shoreline and small patches of sky between branches. A single vertical portrait photographed by someone standing in front of the subject, approximately eye-level with a gentle downward perspective. Frame her from above the head to the lower thighs, placing her centrally in the lower portion of the image while the flowering canopy fills the upper half. Interlacing branches form a natural overhead frame, and the horizontal parapet separates the near portrait from the smaller lakeside visitors. Keep the woman clearly resolved and the surrounding blossoms and background legible. Soft open-sky daylight filters through the canopy, illuminating her face and bare shoulders from above and slightly in front, with mild shadows beneath her chin and hair. Gentle highlights trace her dark hair and the upper folds of the dress; deeper shade settles within branch junctions and the stone wall joints. Casual digital travel portrait with fine hair strands, softly rendered skin texture, lightweight printed fabric with visible gathered folds, coarse weathered stone, rough bark and delicate clustered petals. Quiet springtime leisure with lavender blossoms echoing the pastel floral dress, balanced by charcoal stone, dark brown branches, subdued green grass and pale blue water.\n\nA young adult woman with fair skin and dark hair parted slightly to one side and gathered into a low ponytail poses for an outdoor outfit photograph, looking directly at the camera with a faint closed-mouth smile. She wears softly defined brows, fine dark eyeliner, subtle pink blush and muted rose-red lipstick. A broad silver-gray wrap with black edging and a black underside drapes over her shoulders and falls in pointed asymmetric panels over a short black outfit. She wears sheer light nude hosiery and glossy black low-heeled pumps with rectangular gold-tone buckles. Her shoulders remain relaxed, one bent forearm rests across her waist with fingers gently holding the opposite side of the wrap, and her legs cross naturally with the front foot extended toward the camera. In the foreground, gray rectangular stone paving slabs fill the lower frame beside the diagonal edge of a raised stone planting bed at right. In the midground, the woman stands on the paved courtyard path immediately beside a dense evergreen tree whose branches fill the right side. In the background, a tall pale-gray brick wall rises above a darker brick base, with a narrow horizontal ledge and exposed pipe running behind her. A single full-body portrait photographed by someone standing in front of her, with a roughly chest-height camera angled gently downward. The woman stands slightly left of center, her head against the uncluttered brick wall and her crossed legs forming a long diagonal. Evergreen branches balance the right half, while paving joints and the planter border lead toward her. The wall, foliage and pavement remain clearly recognizable with little background blur. Soft diffuse daylight enters from the open courtyard in front and slightly to camera left, illuminating her face, bare hand and gray wrap evenly. Gentle shadows gather beneath the wrap folds, along the inner legs and within the evergreen branches; small highlights reflect from the patent shoes and metallic buckles. A digital fashion photograph with softly rendered skin, visible individual hair strands, fine brushed texture and broad folds in the wrap, smooth black fabric, translucent hosiery, polished patent leather, rough brick mortar and granular stone paving. A composed everyday outfit portrait in cool silver gray, charcoal black and muted evergreen, with pale warm skin tones and small gold accents.\n\nA young adult woman takes an overhead outfit selfie, extending both arms toward the camera, gently tilting her head and looking up with a small closed-mouth smile. She has dark hair loosely gathered at the back, long side-swept bangs partly covering one eye, and loose strands around her cheeks. Her makeup has softly defined eyeliner, subtle peach blush, a smooth skin finish, and muted rose lips. She wears small silver hoop earrings, a charcoal fine-knit wrap cardigan with long sleeves and overlapping panels across the waist, an olive scoop-neck camisole, a mustard-khaki short skirt with a visible front seam and dark edging at the hem, and partially visible black shoes with pale highlights. A black leather shoulder bag hangs at her left side. In the foreground, her extended cardigan sleeves enlarge toward both lower corners beside the camera. In the midground, her torso, skirt, hanging shoulder bag, and closely placed feet align over gray asphalt pavement. In the background, the same lightly speckled asphalt continues across the upper frame, with a small round utility cover near the upper right; the downward camera angle excludes the horizon and buildings. Handheld smartphone selfie from above her head, looking steeply downward with wide-angle perspective that enlarges her face and outstretched sleeves while reducing her legs and shoes. Her face sits near the upper center, her body runs down the central axis, and exposed pavement forms narrow negative space around her silhouette. The sleeves create diagonal lines into the lower corners, with the shoes barely contained at the bottom edge. Soft diffuse daylight from overhead and slightly toward the upper left creates gentle highlights on her forehead, nose, and upper chest, with soft shadows beneath her bangs, chin, cardigan folds, and shoulder bag. Smartphone photograph with fine charcoal knit ribs, softly wrinkled olive jersey, lightly creased skirt fabric, smooth black leather with restrained reflections, individual flyaway hairs, subtle skin texture, and granular asphalt. Relaxed everyday outfit documentation, with charcoal gray and black framing muted olive and mustard-khaki clothing against cool gray pavement, warmed by natural skin tones.\n\nA young adult woman with long straight dark hair and wispy full bangs poses beside a communal table, looking directly at the camera with parted lips and a quiet, attentive expression. She wears subtle eyeliner, soft pink blush, a light natural skin finish and muted rose lip tint. Her fitted white crewneck jersey top has long sleeves pushed toward her forearms and gentle gathers around her waist, paired with dark navy trousers extending below the frame; footwear is outside the crop. A slim black bracelet and delicate rings accessorize her hands. She leans lightly against the table, one hand resting near her hip on its edge and the other spread naturally across the near tabletop. In the foreground, a broad black woodgrain table runs diagonally from the bottom edge into the cafe, holding small upright white sculptural objects and a rounded striped ceramic vase filled with spreading bare branches, yellow-green fruit and dried foliage. The woman occupies the right midground beside the table. Behind her are cream stools, pale tables, a green service fixture and substantial unfinished concrete columns. The deep interior recedes beneath a pitched roof with exposed wooden boards and concrete beams toward a blue gable wall bearing large red HAY lettering, pendant globes, shelves and scattered chairs. Tall windows and white wall-mounted lamps line the left wall; a cream partition on the right also bears HAY lettering. Vertical three-quarter portrait cropped around the upper thighs, photographed by someone standing across the table at roughly the subject's eye height with a gentle downward view over the tabletop. The woman sits visually on the right third while the tall branch arrangement fills the left half, its twigs crossing the upper frame. Table edges and roof beams lead into the background, with recognizable architectural detail and mild depth falloff. Soft daylight enters through the tall windows on the left, illuminating the white shirt, hands and face with gradual shadow toward the right side of her hair. White wall lamps and warm yellow pendant globes add localized light deeper inside the cafe. The vase and arms cast soft contact shadows across the dark table, with restrained highlights on hair strands and ceramic glaze. Casual digital portrait photography with fine hair strands, subtle skin texture, thin jersey fabric folds, pronounced black tabletop grain, matte concrete, exposed timber and textured striped pottery. The face and clothing remain clearly resolved while distant furnishings soften slightly. Relaxed, quietly posed cafe lifestyle portrait; white and navy clothing contrasts with warm beige concrete, brown timber, black woodgrain and yellow-green branches, punctuated by deep blue and red in the background.\n\nA young adult woman with long straight dark brown hair, airy center-parted bangs and sunlit flyaways turns her face back toward the camera, meeting the lens with a soft closed-mouth smile. She has softly defined eyeliner, long lashes, pink blush, smooth luminous skin and muted rose lips. Her torso faces away in a relaxed three-quarter pose, with one elbow bent and fingers resting near her collarbone. She wears a black sleeveless high-neck top with an open back and beige tailored trousers visible at the waist and upper hips; her lower legs and footwear fall outside the frame. A black quilted leather shoulder bag rests against her hip on gold chain straps, with a small black flap pouch and a brown plush charm with pale blue accents. A delicate gold bracelet circles her wrist. In the foreground, two slim horizontal metal railing bars cross the lower frame behind her. She stands beside the railing on a paved sidewalk bordering a narrow asphalt street. Pale rendered buildings with recessed ground-floor openings line the left, while an older facade with repeated rectangular windows and ground-floor shopfronts lines the right. Behind her right shoulder sits a dark parked sedan; another car and closely spaced multistory buildings recede toward the softly blurred street vanishing point. Vertical medium portrait from approximately eye level, framed from above the head to the upper thighs. The subject occupies the center-right, with bright open roadway providing negative space on the left. Building edges and street boundaries converge into the background, while shallow depth of field keeps her face, hair and shoulder clearer than the architecture. Her direct gaze and deliberate shoulder turn suggest a posed street-fashion photograph taken by someone standing nearby. Strong daylight enters from the upper left and behind, catching the crown, loose hair strands and exposed shoulder with bright rim highlights. Reflected light from the pale street softly illuminates her face, with gentle shade beneath the bangs and chin. The left roadway approaches white in the strongest sunlight, while the black clothing and bag retain deep shadows and the gold chains show small specular glints. Digital fashion portrait with softly rendered skin texture, individual glossy hair strands, matte black fabric, lightly creased beige trouser fabric, quilted leather, reflective metal chains, fuzzy plush fabric and fine pavement grain. Background details soften through optical blur and bright atmospheric haze. Relaxed, intimate daytime street style, balancing dark brown hair and black accessories against warm beige clothing, pale gray architecture, creamy sunlight and restrained gold details.\n\n",
+        "分隔方式": "自动（空行优先，无空行按换行）",
+        "自定义分隔符": "---",
+        "当前索引": 1,
+        "统一前缀": "",
+        "统一后缀": "",
+        "去重": false,
+        "最大条数": 0,
+        "zzm_ui": ""
+      },
+      "color": "#C05C43"
+    }
+  ],
+  "links": [
+    [
+      22,
+      16,
+      0,
+      17,
+      0,
+      "LATENT"
+    ],
+    [
+      69,
+      44,
+      0,
+      16,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      70,
+      44,
+      0,
+      45,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      71,
+      45,
+      0,
+      16,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      162,
+      25,
+      0,
+      17,
+      1,
+      "VAE"
+    ],
+    [
+      196,
+      17,
+      0,
+      77,
+      0,
+      "IMAGE"
+    ],
+    [
+      204,
+      64,
+      0,
+      85,
+      0,
+      "MODEL"
+    ],
+    [
+      205,
+      85,
+      0,
+      16,
+      0,
+      "MODEL"
+    ],
+    [
+      206,
+      31,
+      0,
+      44,
+      0,
+      "CLIP"
+    ],
+    [
+      209,
+      87,
+      3,
+      16,
+      3,
+      "LATENT"
+    ],
+    [
+      217,
+      91,
+      0,
+      44,
+      1,
+      "STRING"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9646149645000006,
+      "offset": [
+        1620.3110332293631,
+        153.2456785999819
+      ]
+    },
+    "frontendVersion": "1.57.6",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true,
+    "ue_links": [],
+    "links_added_by_ue": []
+  },
+  "extensions": {
+    "seed_widgets": {
+      "16": 0,
+      "66": 15
+    },
+    "widget_idx_map": {
+      "16": {
+        "seed": 0,
+        "sampler_name": 4,
+        "scheduler": 5
+      },
+      "66": {
+        "seed": 15
+      }
+    }
+  },
+  "version": 0.4,
+  "seed_widgets": {
+    "16": 0
+  }
+}

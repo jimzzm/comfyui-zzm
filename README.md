@@ -108,6 +108,27 @@ ComfyUI/custom_nodes/zzm-toolbox
 
 ---
 
+## 示例工作流
+
+![示例工作流](example_workflows/workflow.png)
+
+`example_workflows/Moss-SFT-test.json` —— Moss-SFT 文生图，用「多段提示词」一次跑完多段文案。
+
+**需要的模型**（放到 ComfyUI 对应目录）：
+
+| 类型 | 文件 | 目录 |
+|---|---|---|
+| UNET | `moss_image_sft_int8_convrot.safetensors` | `models/diffusion_models/Moss/` |
+| CLIP | `qwen3.5_9b_int8_convrot.safetensors` | `models/text_encoders/` |
+| VAE | `flux2-vae.safetensors` | `models/vae/` |
+| LoRA | `lodestones-8-steps-dmd2-lora-*.safetensors` | `models/loras/Moss/` |
+
+流程：加载 CLIP / UNET / VAE → LoRA 加载器 → **多段提示词（逐条）** 把文本按空行切成多段 → **图像分辨率** 给出 512×512 → KSampler（4 步、CFG 1.0、euler / simple）→ 保存图片。
+
+点一次 Run 会依次跑完所有段落（一条跑完自动排下一条，显存占用等同单张）。想从某一段开始，把「多段提示词」的「当前索引」改成对应条号；想中途停下就点取消。
+
+> 工作流里的提示词是示例文案，换成自己的即可。
+
 ## 目录结构
 
 ```
@@ -121,6 +142,9 @@ zzm-toolbox/
 │   ├── node_lora_loader.py      LoRA 加载器
 │   ├── node_save_image.py       保存图片
 │   └── _*.py                    上面三个的内部 helper
+├── example_workflows/
+│   ├── Moss-SFT-test.json       示例工作流（Moss-SFT 文生图）
+│   └── workflow.png             示意图
 └── web/js/
     ├── resolution_preview.js    分辨率数值显示
     ├── prompt_list.js           提示词面板

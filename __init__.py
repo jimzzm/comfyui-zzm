@@ -45,7 +45,11 @@ def _no_store_assets() -> None:
     server._zzmaus_no_store = True
 
     async def no_store(request, response):
-        if str(request.path).startswith("/extensions/comfyui-zzm/"):
+        # `/extensions` is the list of files the page imports. It carries no
+        # cache header of its own, so a browser keeps the old list and asks for
+        # files that have been renamed or removed — a 404 the page never shows.
+        path = str(request.path)
+        if path == "/extensions" or path.startswith("/extensions/comfyui-zzm/"):
             response.headers["Cache-Control"] = "no-store"
 
     server.app.on_response_prepare.append(no_store)

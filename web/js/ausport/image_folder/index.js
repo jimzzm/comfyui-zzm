@@ -7,15 +7,15 @@
 // other value. With "每次一张" the tile the next run loads is ringed, and
 // Picture moves on by one each time a run is queued.
 //
-// The folder the node reads is a whole path on this machine, so the pictures
-// are read where they already are and nothing is copied. The two ways of
-// bringing pictures in are the browser's own: Add opens the system's file
-// picker for pictures or for a whole folder, and a drop on the node does the
-// same thing without the picker. A page can never learn where a file came
-// from, so those copies land in ComfyUI's temp folder (temp/zzm_drop), and the
-// node moves there and ticks what just came in. A browser asks its own
-// question about a chosen folder ("Upload 74 files to this site?"); the note
-// on the node says what it means while the file explorer is open.
+// The folder the node reads is a whole path on this machine, so a folder that
+// is already on disk is read where it is and nothing is copied: paste its path
+// into the box. The browser's own pickers cannot hand over a path - only the
+// files themselves - so what they bring in is copied into ComfyUI's input
+// folder under zzm_drop, and the node moves there and ticks what just came in.
+// That is the same door the原版 used, moved into one folder so the input folder
+// stays tidy. A browser asks its own question about a chosen folder ("Upload 74
+// files to this site?"); the note on the node says what it means while the
+// file explorer is open.
 
 import { api } from "/scripts/api.js";
 import { app } from "/scripts/app.js";
@@ -47,7 +47,8 @@ const MIN_HEIGHT = 204;
 // Tiles are added this many at a time: a folder of thousands stays light.
 const SHOWN_STEP = 300;
 const WATCHED = ["folder", "subfolders", "sort", "pictures", "run", "position", "at_the_end"];
-// Added or dropped pictures land in this folder under ComfyUI's temp.
+// Pictures added by hand or dropped on the node land in this folder inside
+// ComfyUI's input folder: a browser can only hand the server the file itself.
 const DROP_FOLDER = "zzm_drop";
 // How long the pointer rests on a tile before the preview is read.
 const HOVER_DELAY = 1000;
@@ -63,7 +64,7 @@ const BIG_BYTES = 1024 ** 3;
 // On the node while the file explorer is open for a folder.
 const CHOOSING = [
   "在文件浏览器里选择文件夹",
-  "选中的图片会放进 ComfyUI 的临时文件夹（temp/zzm_drop），节点随后切过去。",
+  "选中的图片会复制到 ComfyUI 的输入目录（input/文件夹名），节点随后切过去。",
   '浏览器可能先问「是否上传文件到此站点？」—— 那就是这次复制，站点就是你的 ComfyUI。',
 ];
 
@@ -98,12 +99,19 @@ function ensureCss() {
 .zzmaus-if-ask{position:fixed;z-index:10001;box-sizing:border-box;width:300px;padding:12px;border:1px solid var(--zzm-warn,#ffca16);border-radius:8px;background:var(--zzm-view,#18191b);box-shadow:0 12px 32px rgba(0,0,0,.6);color:var(--zzm-text,#edeef0);font:11.5px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
 .zzmaus-if-ask b{display:block;margin-bottom:6px;color:var(--zzm-warn,#ffca16);font-size:12.5px;}
 .zzmaus-if-ask .zzmaus-if-browse-foot{padding:10px 0 0;border-top:0;}
-.zzmaus-if-pick{display:block;margin:12px auto 0;height:26px;padding:0 12px;border:1px solid ${BRAND};border-radius:6px;background:rgba(192,92,67,.16);color:var(--zzm-text,#edeef0);font:700 11.5px/24px "Segoe UI",sans-serif;letter-spacing:.03em;cursor:pointer;}
-.zzmaus-if-pick:hover{background:${BRAND};color:#fff;}
+/* 添加: the one button in the bar that brings something in, so it carries the
+   pack's color instead of blending with the rest. */
+.zzmaus-if-btn.accent{border-color:${BRAND};background:rgba(192,92,67,.22);color:var(--zzm-text,#edeef0);}
+.zzmaus-if-btn.accent:hover{background:${BRAND};color:#fff;}
+.zzmaus-if-btn.accent[disabled]{background:rgba(192,92,67,.22);color:var(--zzm-text,#edeef0);}
+/* The 添加 menu: one row under the other, full width. */
+.zzmaus-if-menu-row{display:block;width:100%;box-sizing:border-box;margin:0 0 2px;padding:6px 9px;border:0;border-radius:5px;background:transparent;color:var(--zzm-text,#edeef0);font:inherit;text-align:left;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.zzmaus-if-menu-row:last-child{margin-bottom:0;}
+.zzmaus-if-menu-row:hover{background:rgba(192,92,67,.18);color:var(--zzm-text,#edeef0);}
 .zzmaus-if-cover{position:absolute;left:6px;right:6px;top:28px;bottom:6px;z-index:2;box-sizing:border-box;display:flex;flex-direction:column;justify-content:safe center;gap:6px;padding:12px 14px;overflow:auto;border:1px solid ${BRAND};border-radius:6px;background:var(--zzm-view,#18191b);color:var(--zzm-text,#edeef0);font-size:11.5px;line-height:1.45;text-align:center;}
 .zzmaus-if-cover[hidden]{display:none;}
 .zzmaus-if-cover b{color:var(--zzm-text,#edeef0);font-size:12.5px;}
-.zzmaus-if-note{grid-column:1/-1;align-self:center;padding:22px 12px;color:var(--zzm-dim,#b0b4ba);font-size:11.5px;line-height:1.45;text-align:center;}
+.zzmaus-if-note{grid-column:1/-1;align-self:center;padding:22px 12px;color:var(--zzm-dim,#b0b4ba);font-size:11.5px;line-height:1.45;text-align:center;white-space:pre-line;}
 .zzmaus-if-more{grid-column:1/-1;height:24px;border:1px dashed var(--zzm-line-soft,#363a3f);border-radius:5px;background:transparent;color:var(--zzm-dim,#b0b4ba);font:600 11.5px/22px "Segoe UI",sans-serif;cursor:pointer;}
 .zzmaus-if-more:hover{color:var(--zzm-text,#edeef0);border-color:${BRAND};}
 .zzmaus-if-view{position:fixed;z-index:10000;display:none;box-sizing:border-box;padding:3px;border:1px solid rgba(192,92,67,.65);border-radius:6px;background:var(--zzm-view,#18191b);box-shadow:0 14px 36px rgba(0,0,0,.6);pointer-events:none;}
@@ -209,26 +217,16 @@ function rebuild(state) {
   state.watcher?.disconnect();
   state.grid.replaceChildren();
   state.cells = new Map();
-  const hint = (text, offer) => {
-    const note = el("div", "zzmaus-if-note", text);
-    if (offer) {
-      const pick = el("button", "zzmaus-if-pick", "打开文件夹…");
-      pick.type = "button";
-      pick.title = "用系统的文件夹选择框挑一个文件夹：里面的图片会放进临时文件夹，节点切过去并可以逐张跑。";
-      pick.addEventListener("click", () => chooseFolder(state));
-      note.append(pick);
-    }
-    state.grid.append(note);
-  };
+  const hint = (text) => state.grid.append(el("div", "zzmaus-if-note", text));
   if (state.error) {
-    hint(state.error, true);
+    hint(state.error);
   } else if (!state.list.length) {
     if (state.cleared) {
-      hint("已清空。点 ↻ 重新读取，或选一个文件夹。", true);
+      hint("已清空。点 ↻ 重新读取，或另选一个文件夹。");
     } else if (!state.shown.folder) {
-      hint(state.busy ? "正在读取文件夹…" : "还没有选文件夹。点下面的按钮挑一个，或者把图片拖到节点上：", !state.busy);
+      hint(state.busy ? "正在读取文件夹…" : "还没有文件夹：把完整路径粘进上面的地址栏，或者\n\n拖入图片或者文件夹");
     } else {
-      hint(state.busy ? "正在读取文件夹…" : "这个文件夹里没有图片。把图片拖到节点上，或者：", !state.busy);
+      hint(state.busy ? "正在读取文件夹…" : "这个文件夹里没有图片。\n\n拖入图片或者文件夹");
     }
   } else {
     for (const picture of state.list.slice(0, state.limit)) {
@@ -263,14 +261,15 @@ function paint(state) {
   }
   const line = state.copying
     ? { text: `copying ${state.copying.done} of ${state.copying.total}`, warn: false }
-    : state.error ? { text: "folder not found", warn: true }
-      : state.busy ? { text: "looking...", warn: false }
-        : state.cleared ? { text: "未载入", warn: false } : countLine(picked, names, now);
+    : !now.folder ? { text: "未选文件夹", warn: false }
+      : state.error ? { text: "文件夹打不开", warn: true }
+        : state.busy ? { text: "读取中…", warn: false }
+          : state.cleared ? { text: "未载入", warn: false } : countLine(picked, names, now);
   state.chip.textContent = line.text;
   state.chip.classList.toggle("warn", line.warn);
   state.chip.title = [line.text, state.full ? "这个文件夹只列出前 5000 张。" : "", state.loadedLine].filter(Boolean).join("\n");
   state.add.disabled = false;
-  state.add.title = "添加图片或整个文件夹：用系统的选择框，选中的会放进临时文件夹（temp/zzm_drop）。也可以直接拖到节点上。";
+  state.add.title = "添加图片或整个文件夹：用系统的选择框，选中的会复制到 ComfyUI 的输入目录（input/zzm_drop）。也可以直接拖到节点上。";
 }
 
 // ---------------------------------------------------------------------------
@@ -360,7 +359,7 @@ function setPicked(state, picked) {
 function cover(state) {
   const copying = state.copying;
   const lines = copying
-    ? [`Copying ${copying.done} of ${copying.total} pictures`, `from "${copying.name}" into ComfyUI's temp folder (temp/${copying.target}).`]
+    ? [`Copying ${copying.done} of ${copying.total} pictures`, `from "${copying.name}" into ComfyUI's input folder (input/${copying.target}).`]
     : state.choosing ? CHOOSING : null;
   state.cover.hidden = !lines;
   if (!lines) return;
@@ -398,9 +397,9 @@ const isPicture = (file) => String(file?.type ?? "").startsWith("image/") || PIC
 async function upload(file, subfolder, overwrite) {
   const body = new FormData();
   body.append("image", file, file.name);
-  // temp, not input: the picture came from the person's own folder and only
-  // passes through here, so ComfyUI's input folder stays as it was.
-  body.append("type", "temp");
+  // input, the way the原版 did it: the browser cannot hand over a path, so the
+  // file itself comes in. It lands under input/zzm_drop, one folder to clean up.
+  body.append("type", "input");
   if (subfolder) body.append("subfolder", subfolder);
   if (overwrite) body.append("overwrite", "true");
   try {
@@ -413,8 +412,8 @@ async function upload(file, subfolder, overwrite) {
   }
 }
 
-// Loose pictures go into ComfyUI's temp drop folder, and the node moves there
-// with them ticked: what was just brought in is what the person wants to use.
+// Loose pictures go into input/zzm_drop, and the node moves there with them
+// ticked: what was just brought in is what the person wants to use.
 async function addFiles(state, files) {
   const images = [...(files ?? [])].filter(isPicture);
   if (!images.length) return false;
@@ -425,10 +424,11 @@ async function addFiles(state, files) {
     if (name) added.push(name); else failed += 1;
   }
   const folders = await comfyFolders();
-  const target = `${folders.temp || "temp"}/${DROP_FOLDER}`;
+  const target = `${folders.input || "input"}/${DROP_FOLDER}`;
   // 往里加图片说明用户要看东西：先退出"已清空"状态，否则 refresh 不会执行
   setCleared(state, false);
   if (added.length) write(state.node, "folder", target);
+  endChoosing(state);
   await refresh(state);
   const came = added.filter((name) => state.names.includes(name));
   if (came.length) setPicked(state, came);
@@ -466,7 +466,7 @@ function askBig(state, name, pictures) {
   return new Promise((done) => {
     const root = el("div", "zzmaus-if-ask");
     const many = pictures.length.toLocaleString("en-US");
-    root.append(el("b", "", `Copy ${many} pictures into ComfyUI's temp folder?`));
+    root.append(el("b", "", `Copy ${many} pictures into ComfyUI's input folder?`));
     root.append(el("div", "", `"${name}" holds ${many} pictures, ${sizeText(bytes)}. The copies take that much disk space again, and it can take a while.`));
     if (pictures.length > COPY_LIMIT) root.append(el("div", "", `Only the first ${COPY_LIMIT.toLocaleString("en-US")} are copied.`));
     const foot = el("div", "zzmaus-if-browse-foot");
@@ -493,7 +493,7 @@ function askBig(state, name, pictures) {
 // the same folder again writes over its copies instead of piling up doubles.
 async function copyFolder(state, name, pictures) {
   if (!(await askBig(state, name, pictures)) || !state.alive) return;
-  const target = `${DROP_FOLDER}/${folderName(name)}`;
+  const target = folderName(name);
   const queue = pictures.slice(0, COPY_LIMIT);
   state.copying = { done: 0, total: queue.length, name, target };
   paint(state);
@@ -516,10 +516,10 @@ async function copyFolder(state, name, pictures) {
   if (!state.alive) return;
   setCleared(state, false);
   const folders = await comfyFolders();
-  const moved = write(state.node, "folder", `${folders.temp}/${target}`) | 0;
+  const moved = write(state.node, "folder", `${folders.input || "input"}/${target}`) | 0;
   if (moved) notifyZzmChange(); else await refresh(state);
   paint(state);
-  showToast({ detail: `Copied ${copied} picture${copied === 1 ? "" : "s"} from "${name}" into ComfyUI's temp folder (temp/${target}).` });
+  showToast({ detail: `Copied ${copied} picture${copied === 1 ? "" : "s"} from "${name}" into ComfyUI's input folder (input/${target}).` });
   if (copied < total) showToast({ severity: "warn", detail: `${total - copied} could not be copied.` });
   if (pictures.length > COPY_LIMIT) showToast({ severity: "warn", detail: `Only the first ${COPY_LIMIT} pictures were copied.` });
 }
@@ -585,13 +585,13 @@ function addMenu(state, anchor) {
   const abort = new AbortController();
   openMenu = { root, abort };
   const row = (text, title, run) => {
-    const button = el("button", "zzmaus-if-browse-row", text);
+    const button = el("button", "zzmaus-if-menu-row", text);
     button.type = "button"; button.title = title;
     button.addEventListener("click", () => { closeMenu(); run(); });
     root.append(button);
   };
-  row("图片…", "用系统的选择框挑图片，会放进临时文件夹（temp/zzm_drop）。", () => state.pickFiles.click());
-  row("整个文件夹…", "用系统的选择框挑一个文件夹，里面的图片按文件夹名放进 temp/zzm_drop。", () => chooseFolder(state));
+  row("图片…", "用系统的选择框挑图片，会复制到输入目录（input/zzm_drop），节点切过去。", () => state.pickFiles.click());
+  row("整个文件夹…", "用系统的选择框挑一个文件夹，里面的图片按文件夹名复制到输入目录（input/文件夹名）。", () => chooseFolder(state));
   document.body.append(root);
   const box = anchor.getBoundingClientRect();
   root.style.left = `${Math.max(8, Math.min(window.innerWidth - 180, box.left))}px`;
@@ -691,7 +691,7 @@ function buildPanel(node) {
   const chip = el("span", "zzmaus-if-chip", "");
   const all = el("button", "zzmaus-if-btn", "全选");
   const none = el("button", "zzmaus-if-btn", "取消");
-  const add = el("button", "zzmaus-if-btn", "添加");
+  const add = el("button", "zzmaus-if-btn accent", "添加");
   const reload = el("button", "zzmaus-if-btn", "↻");
   const wipe = el("button", "zzmaus-if-btn", "清空");
   all.title = "全选文件夹里的图片，之后新加的也算在内。";
@@ -798,7 +798,7 @@ function buildPanel(node) {
   state.pick = () => chooseFolder(state);
   state.refresh = () => refresh(state);
   watchPointer(state);
-  // Where ComfyUI's temp folder is: pictures added or dropped land there.
+  // Where ComfyUI's input folder is: pictures added or dropped land there.
   comfyFolders().then((folders) => { state.folders = folders; });
 
   // A setting changed: the folder is read again, or only the marks move.

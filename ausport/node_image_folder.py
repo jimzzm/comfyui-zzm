@@ -40,7 +40,7 @@ except ImportError:                   # pragma: no cover
 
 def _own_folder(getter: str) -> str:
     """ComfyUI's own folder, as a whole path. Pictures added by hand or dropped
-    on the node land in temp, so the node can go and read them there."""
+    on the node land in input, so the node can go and read them there."""
     if folder_paths is None:
         return ""
     try:
@@ -110,9 +110,9 @@ def _register_routes() -> None:
 
     @routes.get("/zzmaus/image_folder/where")
     async def where(request):
-        """ComfyUI's own folders. The panel adds pictures to temp: a browser can
-        only hand the server a copy, and the input folder is not where a picture
-        picked from disk belongs."""
+        """ComfyUI's own folders. The panel copies what a picker or a drop hands
+        over into input/zzm_drop: a browser can only pass the file itself, never
+        the path it came from. A folder typed into the box is read in place."""
         return web.json_response({
             "temp": _own_folder("get_temp_directory"),
             "input": _own_folder("get_input_directory"),
@@ -170,8 +170,9 @@ class ZZMImageFolder:
     DESCRIPTION = (
         "打开这台电脑上的任意文件夹，勾上要的图片，让工作流一张张跑完。\n"
         "· 文件夹填完整路径，或者用卡片上的「打开文件夹」—— 那是系统的文件夹选择框\n"
-        "· 手选的图片、拖进节点的图片、整个文件夹，都放进 ComfyUI 的临时文件夹（temp/zzm_drop），\n"
-        "  节点随后切过去并勾好；输入目录不动\n"
+        "· 文件夹填完整路径就按路径就地读，一张也不复制\n"
+        "· 手选的图片、拖进节点的图片，复制到 comfyui 输入目录的 input/zzm_drop 再读；\n"
+        "  整个文件夹按文件夹名复制到 input/文件夹名（跟原来的做法一样）\n"
         "· 每次一张：每次运行只加载一张，跑完自动往后走，某张失败只跳过它自己\n"
         "· 一次全部：点一次运行，勾选的每张图各跑一遍\n"
         "· 同时给出每张的遮罩、文件名（接「保存图片」可沿用原名）、序号和总数\n"

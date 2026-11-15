@@ -106,15 +106,15 @@ export function ensureCardCss() {
 .zzmaus-card-suffix{flex:none;color:var(--zzm-dim,#b0b4ba);font-size:11px;letter-spacing:.06em;text-transform:uppercase;user-select:none}
 .zzmaus-card-section{height:${SECTION_HEIGHT}px;flex:none;display:flex;align-items:flex-end;color:var(--zzm-dim,#b0b4ba);font-size:11px;letter-spacing:.12em;text-transform:uppercase;user-select:none}
 .zzmaus-card-section.hidden{display:none}
-.zzmaus-card-group{height:${GROUP_HEIGHT}px;flex:none;display:flex;align-items:center;gap:6px;padding:0 4px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--zzm-dim,#b0b4ba);font:600 11.5px/1 ${FONT};letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-align:left;pointer-events:auto}
+.zzmaus-card-group{height:${GROUP_HEIGHT}px;flex:none;display:flex;align-items:center;gap:6px;padding:0 4px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--zzm-dim,#b0b4ba);font:400 11.5px/1 ${FONT};letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-align:left;pointer-events:auto}
 .zzmaus-card-group:hover{color:var(--zzm-text,#edeef0);border-color:var(--zzm-line-soft,#363a3f)}
 .zzmaus-card-group .glyph{display:inline-block;width:10px;transition:transform .12s}
 .zzmaus-card-group.open .glyph{transform:rotate(90deg)}
 .zzmaus-card-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;width:100%;height:${ROW_HEIGHT}px;padding:2px;box-sizing:border-box;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:6px;background:var(--zzm-field,#212225)}
-.zzmaus-card-seg button{min-width:0;border:none;border-radius:4px;padding:0 2px;background:transparent;color:var(--zzm-dim,#b0b4ba);font:600 11.5px/1 ${FONT};cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zzmaus-card-seg button{min-width:0;border:none;border-radius:4px;padding:0 2px;background:transparent;color:var(--zzm-dim,#b0b4ba);font:400 11.5px/1 ${FONT};cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .zzmaus-card-seg button:hover{color:var(--zzm-text,#edeef0)}
 .zzmaus-card-seg button.on{background:${BRAND};color:#fff}
-.zzmaus-card-select{width:100%;height:${ROW_HEIGHT}px;padding:0 24px 0 8px;box-sizing:border-box;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:6px;background:var(--zzm-field,#212225) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238ba3a1' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 8px center;color:var(--zzm-text,#edeef0);font:600 11.5px ${FONT};appearance:none;-webkit-appearance:none;cursor:pointer;overflow:hidden;text-overflow:ellipsis}
+.zzmaus-card-select{width:100%;height:${ROW_HEIGHT}px;padding:0 24px 0 8px;box-sizing:border-box;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:6px;background:var(--zzm-field,#212225) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238ba3a1' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 8px center;color:var(--zzm-text,#edeef0);font:400 11.5px ${FONT};appearance:none;-webkit-appearance:none;cursor:pointer;overflow:hidden;text-overflow:ellipsis}
 .zzmaus-card-select:hover{border-color:${BRAND}}
 .zzmaus-card-select:focus-visible{outline:2px solid ${BRAND};outline-offset:1px}
 .zzmaus-card-text{width:100%;height:${ROW_HEIGHT}px;padding:0 8px;box-sizing:border-box;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:6px;background:var(--zzm-field,#212225);color:var(--zzm-text,#edeef0);font:12px ${FONT};min-width:0}
@@ -146,9 +146,9 @@ export function ensureCardCss() {
 .zzmaus-card-swatch{flex:none;width:${ROW_HEIGHT}px;height:${ROW_HEIGHT}px;padding:0;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:6px;background:var(--zzm-field,#212225);cursor:pointer}
 .zzmaus-card-swatch::-webkit-color-swatch-wrapper{padding:3px}
 .zzmaus-card-swatch::-webkit-color-swatch{border:none;border-radius:3px}
-.zzmaus-card-btn{flex:none;height:${ROW_HEIGHT}px;padding:0 10px;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:6px;background:var(--zzm-view,#18191b);color:var(--zzm-text,#edeef0);font:600 11.5px/1 ${FONT};cursor:pointer;white-space:nowrap}
+.zzmaus-card-btn{flex:none;height:${ROW_HEIGHT}px;padding:0 10px;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:6px;background:var(--zzm-view,#18191b);color:var(--zzm-text,#edeef0);font:400 11.5px/1 ${FONT};cursor:pointer;white-space:nowrap}
 .zzmaus-card-btn:hover{border-color:${BRAND};color:var(--zzm-text,#edeef0)}
-.zzmaus-card-btn.primary{border-color:${BRAND};background:${BRAND};color:#fff;font-weight:400}
+.zzmaus-card-btn.primary{border-color:${BRAND};background:${BRAND};color:#fff}
 .zzmaus-card-btn.primary:hover{border-color:#d06a4e;background:#d06a4e;color:#fff}
 `;
   document.head.append(style);

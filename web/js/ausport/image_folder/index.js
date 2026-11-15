@@ -55,7 +55,7 @@ const HOVER_DELAY = 1000;
 // The preview's longest side, and the size the copy it shows is made at.
 const VIEW_EDGE = 640;
 const VIEW_THUMB = 1000;
-const PICTURE = /\.(png|jpe?g|webp|bmp|gif|tiff?)$/i;
+const PICTURE = /\.(png|jpe?g|jpe|jfif|webp|bmp|gif|tiff?)$/i;
 // A dropped folder is copied up to this many pictures.
 const COPY_LIMIT = 3000;
 // From here on a folder is "really big": the node asks before it copies.

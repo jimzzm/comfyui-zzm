@@ -28,7 +28,9 @@ RUNS = ("一次全部", "每次一张")
 AT_THE_END = ("停下来", "从头再来")
 # What the editor does with Picture once a run is queued. A run itself loads what Picture says.
 AFTER_RUN = ("下一张", "停留", "随机")
-IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff")
+IMAGE_EXTENSIONS = (
+    ".png", ".jpg", ".jpeg", ".jpe", ".jfif", ".webp", ".bmp", ".gif", ".tif", ".tiff"
+)
 # A folder this full is listed up to here; the gallery says so.
 MAX_PICTURES = 5000
 # Core Load Image hands out a 64 x 64 mask of zeros for a picture with no

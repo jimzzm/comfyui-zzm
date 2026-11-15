@@ -148,6 +148,8 @@ export function ensureCardCss() {
 .zzmaus-card-swatch::-webkit-color-swatch{border:none;border-radius:3px}
 .zzmaus-card-btn{flex:none;height:${ROW_HEIGHT}px;padding:0 10px;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:6px;background:var(--zzm-view,#18191b);color:var(--zzm-text,#edeef0);font:600 11.5px/1 ${FONT};cursor:pointer;white-space:nowrap}
 .zzmaus-card-btn:hover{border-color:${BRAND};color:var(--zzm-text,#edeef0)}
+.zzmaus-card-btn.primary{border-color:${BRAND};background:${BRAND};color:#fff;letter-spacing:.02em}
+.zzmaus-card-btn.primary:hover{border-color:#d06a4e;background:#d06a4e;color:#fff}
 `;
   document.head.append(style);
 }
@@ -506,10 +508,13 @@ export function mountWidgetCard(node, { rows, minWidth = 300, first = false, hid
     };
   };
 
+  // `row.primary` paints the button in the pack's color, for the one button a
+  // node is really about; `row.width` gives it room.
   const buildButton = (row, into) => {
-    const button = el("button", "zzmaus-card-btn", row.text ?? "Go");
+    const button = el("button", row.primary ? "zzmaus-card-btn primary" : "zzmaus-card-btn", row.text ?? "Go");
     button.type = "button"; button.title = row.title ?? "";
-    button.addEventListener("click", () => row.onClick?.(node, state));
+    if (Number(row.width) > 0) button.style.width = `${Number(row.width)}px`;
+    button.addEventListener("click", () => row.onClick?.(node, state, button));
     into.append(button);
   };
 

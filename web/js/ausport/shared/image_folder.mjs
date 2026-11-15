@@ -2,6 +2,8 @@
 // picked, what the count line says, which picture the next run loads, and
 // the addresses the panel asks the server at.
 //
+import { api } from "/scripts/api.js";
+
 // "picked" is null when every picture is picked (the widget then holds an
 // empty text, and a picture added to the folder later is in too), or the
 // list of picked names.
@@ -72,6 +74,11 @@ export function summary(picked, names) {
   return { count, total, text: `${count} of ${total} picked` };
 }
 
+// 从头再来, and the 重头再来 a workflow saved before the rename carries.
+export function startsOver(atTheEnd) {
+  return atTheEnd === "从头再来" || atTheEnd === "重头再来";
+}
+
 // A picture's number among the picked ones, from 1. 0 when it is not picked.
 export function placeOf(picked, names, name) {
   return pickedNames(picked, names).indexOf(name) + 1;
@@ -84,12 +91,12 @@ export function nameAt(picked, names, position, atTheEnd) {
   if (!list.length) return null;
   const place = Math.max(1, Math.round(Number(position) || 1));
   if (place <= list.length) return list[place - 1];
-  return atTheEnd === "重头再来" ? list[(place - 1) % list.length] : null;
+  return startsOver(atTheEnd) ? list[(place - 1) % list.length] : null;
 }
 
 // Picture after a run is queued. With "停下来", "next" may reach one
 // past the last picture, where the node stops the run; it never runs further
-// than that. With "重头再来", "next" wraps from the last picture back to
+// than that. With "从头再来", "next" wraps from the last picture back to
 // the first, so Picture always names a real picture. A Picture already past
 // the end (saved by an older version) steps on from the picture it loaded.
 // "random" jumps to any picked picture (`roll` is 0..1, for tests).
@@ -98,7 +105,7 @@ export function nextPosition(position, count, afterRun, atTheEnd = "停下来", 
   if (count < 1) return place;
   if (afterRun === "随机") return Math.min(count, Math.floor(roll * count) + 1);
   if (afterRun !== "下一张") return place;
-  if (atTheEnd === "重头再来") return (place % count) + 1;
+  if (startsOver(atTheEnd)) return (place % count) + 1;
   return Math.min(place + 1, count + 1);
 }
 
@@ -110,18 +117,8 @@ export function countLine(picked, names, { run, position, atTheEnd } = {}) {
   const place = Math.max(1, Math.round(Number(position) || 1));
   const head = line.count === line.total ? `all ${line.total}` : `${line.count} of ${line.total}`;
   if (place <= line.count) return { text: `${head} \u00b7 next ${place}`, warn: false };
-  if (atTheEnd === "重头再来") return { text: `${head} \u00b7 next ${((place - 1) % line.count) + 1}`, warn: false };
+  if (startsOver(atTheEnd)) return { text: `${head} \u00b7 next ${((place - 1) % line.count) + 1}`, warn: false };
   return { text: `${head} \u00b7 all done`, warn: true };
-}
-
-export function parentOf(folder) {
-  const parts = String(folder ?? "").split("/").filter(Boolean);
-  parts.pop();
-  return parts.join("/");
-}
-
-export function childOf(folder, name) {
-  return [...String(folder ?? "").split("/").filter(Boolean), name].join("/");
 }
 
 // A query string. Every value is typed by a person or saved in a workflow.
@@ -132,14 +129,52 @@ export function query(params) {
     .join("&");
 }
 
-export function listAddress({ source, folder, subfolders, sort }) {
-  return `/zzmaus/image_folder/list?${query({ source, folder, subfolders: subfolders ? 1 : 0, sort })}`;
+// `folder` is a whole path on this machine, so it goes in as typed.
+export function listAddress({ folder, subfolders, sort }) {
+  return `/zzmaus/image_folder/list?${query({ folder, subfolders: subfolders ? 1 : 0, sort })}`;
 }
 
-export function foldersAddress({ source, folder }) {
-  return `/zzmaus/image_folder/folders?${query({ source, folder })}`;
+export function thumbAddress({ folder, name, v, size = 160 }) {
+  return `/zzmaus/image_folder/thumb?${query({ folder, name, size, v })}`;
 }
 
-export function thumbAddress({ source, folder, name, v, size = 160 }) {
-  return `/zzmaus/image_folder/thumb?${query({ source, folder, name, size, v })}`;
+// The system's folder dialog, opened by the server on this machine.
+export function pickAddress({ start } = {}) {
+  return `/zzmaus/image_folder/pick?${query({ start })}`;
+}
+
+// The folder a person picks, as a whole path; "" when they call it off. The
+// request waits while the dialog is open, so the caller shows that a press did
+// something before awaiting it.
+export async function askForFolder(start = "") {
+  let response;
+  try {
+    response = await api.fetchApi(pickAddress({ start }));
+  } catch {
+    throw new Error("连不上 ComfyUI 后端，文件夹对话框打不开。");
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(String(data?.error ?? "打不开文件夹对话框。").replace(/^(Image Folder|批量加载图片)[:：]\s*/, ""));
+  }
+  return String(data?.folder ?? "");
+}
+
+// A whole path (a drop, a paste) as the folder it sits in plus the name.
+export function resolveAddress(path) {
+  return `/zzmaus/image_folder/resolve?${query({ path })}`;
+}
+
+// A file or folder copied in Explorer: the one way a page can name a real path.
+export function clipboardAddress() {
+  return "/zzmaus/image_folder/clipboard";
+}
+
+export async function askClipboard() {
+  const response = await api.fetchApi(clipboardAddress());
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data?.folder) {
+    throw new Error(String(data?.error ?? "剪贴板里没有文件。").replace(/^(Image Folder|批量加载图片)[:：]\s*/, ""));
+  }
+  return { folder: String(data.folder), name: String(data.name ?? "") };
 }

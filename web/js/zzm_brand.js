@@ -17,8 +17,8 @@ const OUR_OLD_TITLES = new Set(["#2e3135", "#e8e8ec"]);
 
 // 原生控件/输入口的中文标签（键是内部名，不动值，避免破坏逻辑）
 const WIDGET_LABELS = {
-  // 图片文件夹
-  source: "来源", folder: "子目录", subfolders: "含子文件夹", sort: "排序",
+  // 批量加载图片
+  folder: "文件夹", subfolders: "含子文件夹", sort: "排序",
   pictures: "选中图片", run: "运行模式", position: "当前位置",
   after_run: "运行后", at_the_end: "到尾后",
   // 保存图片
@@ -52,8 +52,7 @@ function localize(node) {
 // 悬停提示的中文：按「节点类 + 控件名」覆盖，避免在 Python 里改长段英文
 const TOOLTIPS = {
   ZZM_NODES_ImageFolder: {
-    source: "去 ComfyUI 的哪个目录找：输入目录（你放素材的地方）或输出目录（你出图的地方）。",
-    folder: "里面的子文件夹。留空 = 就是输入/输出目录本身。「浏览」会列出里面的文件夹。",
+    folder: "图片所在的文件夹，在这台电脑上的完整路径。点「打开文件夹」用系统对话框选，也可以直接粘路径。图片就地读取，不复制。",
     subfolders: "把子文件夹里的图片也算进来。",
     sort: "图片顺序：按名称，或按文件修改时间。",
     pictures: "勾选的图片。在节点上点选；留空 = 文件夹里的全部。",

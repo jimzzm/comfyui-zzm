@@ -16,7 +16,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     **_IF_NAME,
     **_SI_NAME,
     **_LL_NAME,
-    "ZZM_NODES_ImageFolder": "图片文件夹",
+    "ZZM_NODES_ImageFolder": "批量加载图片",
     "ZZM_NODES_SaveImage": "保存图片",
     "ZZM_NODES_LoraLoader": "LoRA 加载器",
 }

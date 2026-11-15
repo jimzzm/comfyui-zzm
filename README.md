@@ -33,7 +33,7 @@ git clone https://github.com/jimzzm/comfyui-zzm.git
 | 遮罩填洞                | `ZZM Mask Fill Holes`   | 填掉遮罩里的孔洞                    |
 | 多段提示词（逐条）           | `ZZM Prompt List`       | 一段文本切成 N 条，一条跑完自动排下一条       |
 | 多段提示词·列表模式          | `ZZM Prompt List Batch` | 一次把 N 条全展开（会占显存）            |
-| 图片文件夹               | `ZZM_NODES_ImageFolder` | 从 input / output 目录挑图，批量出图  |
+| 批量加载图片             | `ZZM_NODES_ImageFolder` | 打开这台电脑任意文件夹，批量出图         |
 | LoRA 加载器            | `ZZM_NODES_LoraLoader`  | 多 LoRA 叠加，带触发词输出            |
 | 保存图片                | `ZZM_NODES_SaveImage`   | 存图，可沿用源文件名、写说明文字            |
 | 设置 (Set) / 获取 (Get) | 纯前端                     | 跨节点传参，不用拉长线                 |
@@ -77,12 +77,14 @@ git clone https://github.com/jimzzm/comfyui-zzm.git
 
 同样的切分逻辑，但一次把 N 条全部输出成列表（`OUTPUT_IS_LIST`）。**所有结果会驻留内存**，条数多时注意显存。
 
-## 图片文件夹
+## 批量加载图片
 
-从 ComfyUI 的 `input` 或 `output` 目录里挑图，勾选后批量出图。面板上可以直接看缩略图。
+打开这台电脑上任意一个文件夹，勾选后批量出图。面板上直接看缩略图，鼠标在图上停一秒会放大预览。
 
+- **打开文件夹**：卡片上的主要按钮，弹出系统自己的文件夹对话框；也可以把完整路径直接粘进「文件夹」栏
+- 图片**就地读取**：不复制、不搬动，不经过 ComfyUI 的 `input` / `output`
+- **每次一张**（默认）：每次运行只加载一张，跑完自动往后走，某张失败只跳过它自己
 - **一次全部**：点一次运行，勾选的每张图各跑一遍
-- **每次一张**：每次运行只加载一张，跑完自动往后走，某张失败只跳过它自己
 
 | 输出      | 说明               |
 | ------- | ---------------- |
@@ -90,9 +92,9 @@ git clone https://github.com/jimzzm/comfyui-zzm.git
 | 文件名     | 原始文件名，接「保存图片」可沿用 |
 | 序号 / 总数 | 当前进度             |
 
-工具栏的 **清空** 按钮可以把已载入的文件夹清掉，面板回到空白（状态存进节点属性，重开工作流仍然是空的），点 `↻` 或另选文件夹恢复。
+工具栏的 **全选 / 取消** 管勾选，`↻` 重新读取，**清空** 把面板收起（状态存进节点属性，重开工作流仍然是空的）。
 
-文件夹只能是 ComfyUI 目录内的；别处的文件夹拖到节点上会先复制进 `input`。
+📋 用剪贴板里的文件：在资源管理器里选中一张图或一个文件夹，`Ctrl+C`，回来点 📋，节点切到它所在文件夹并选中它。浏览器不给网页"拖进来的文件在哪个盘"，所以拖拽只能按文件名在当前文件夹里匹配；要读原文件请走「打开文件夹」或 📋。
 
 ## LoRA 加载器
 
@@ -136,7 +138,7 @@ comfyui-zzm/
 ├── nodes_mask_fill_holes.py     遮罩填洞
 ├── nodes_prompt_list.py         多段提示词 ×2
 ├── ausport/
-│   ├── node_image_folder.py     图片文件夹
+│   ├── node_image_folder.py     批量加载图片
 │   ├── node_lora_loader.py      LoRA 加载器
 │   ├── node_save_image.py       保存图片
 │   └── _*.py                    上面三个的内部 helper
@@ -154,7 +156,7 @@ comfyui-zzm/
 
 ## 致谢
 
-- `ausport/` 下的**图片文件夹 / LoRA 加载器 / 保存图片**移植改造自 [ComfyUI-AusBoss](https://github.com/ausboss/ComfyUI-AusBoss)（MIT），保留了原作者的前端组件与后端结构，只改了文案、配色和命名空间。
+- `ausport/` 下的**批量加载图片 / LoRA 加载器 / 保存图片**移植改造自 [ComfyUI-AusBoss](https://github.com/ausboss/ComfyUI-AusBoss)（MIT），保留了原作者的前端组件与后端结构，只改了文案、配色和命名空间。
 - 整体**配色风格**参考 Pixaroma。
 
 ## License

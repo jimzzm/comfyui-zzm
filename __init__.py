@@ -6,7 +6,7 @@ zzm 工具箱 — ComfyUI 自定义节点合集
   ZZM Mask Fill Holes      遮罩填洞
   ZZM Prompt List          多段提示词（逐条）
   ZZM Prompt List Batch    多段提示词·列表模式
-  ZZM_NODES_ImageFolder    Image Folder（图像 / 遮罩 / 文件名 / 序号 / 总数）
+  ZZM_NODES_ImageFolder    批量加载图片（图像 / 遮罩 / 文件名 / 序号 / 总数）
   ZZM_NODES_LoraLoader     LoRA Loader
   ZZM_NODES_SaveImage      Save Image
 
@@ -24,6 +24,34 @@ zzm 工具箱 — ComfyUI 自定义节点合集
 
 # Register web extension directory for frontend JS
 WEB_DIRECTORY = "./web"
+
+
+def _no_store_assets() -> None:
+    """Tell the browser never to reuse this pack's frontend files from cache.
+
+    They change together with the pack, and aiohttp serves them with nothing but
+    an ETag: Chrome is then free to treat them as fresh for a while and hand back
+    last version's file. A stale shared/image_folder.mjs next to a new index.js is
+    a SyntaxError {"does not provide an export named ..."}, and one failed import
+    takes the whole extension down - no card, no gallery, no drop handling.
+    """
+    try:
+        from server import PromptServer
+    except Exception:                    # offline tests, or a core too old
+        return
+    server = getattr(PromptServer, "instance", None)
+    if server is None or getattr(server, "_zzmaus_no_store", False):
+        return
+    server._zzmaus_no_store = True
+
+    async def no_store(request, response):
+        if str(request.path).startswith("/extensions/comfyui-zzm/"):
+            response.headers["Cache-Control"] = "no-store"
+
+    server.app.on_response_prepare.append(no_store)
+
+
+_no_store_assets()
 
 from .nodes_resolution import AspectRatio
 from .nodes_mask_fill_holes import MaskFillHoles

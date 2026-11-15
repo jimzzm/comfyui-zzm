@@ -1,10 +1,10 @@
-"""Image Folder helpers: which pictures a folder holds, which of them are picked,
-and how one is loaded.
+"""Image Folder helpers: which pictures a folder holds, which of them are
+picked, and how one is loaded.
 
-Everything here works on plain paths, so tests run without ComfyUI. The node
-hands in ComfyUI's input or output folder as the root. A folder name comes
-from a widget or a route, so it is attacker-controlled: it is only ever read
-as a path below that root, and anything that leaves it is refused.
+A folder is a whole path on this machine ("D:/pictures/2024"), the one the
+folder dialog hands back or a person pastes, so the pictures are read where
+they already are: nothing is ever copied and no ComfyUI folder is involved.
+Everything here works on plain paths, so the tests run without ComfyUI.
 """
 
 from __future__ import annotations
@@ -17,15 +17,15 @@ import threading
 from collections import OrderedDict
 from io import BytesIO
 from pathlib import Path
+from urllib.parse import unquote
 
 import numpy as np
 import torch
 from PIL import Image, ImageOps
 
-SOURCES = ("输入目录", "输出目录")
 SORTS = ("名称", "最新优先", "最旧优先")
 RUNS = ("一次全部", "每次一张")
-AT_THE_END = ("停下来", "重头再来")
+AT_THE_END = ("停下来", "从头再来")
 # What the editor does with Picture once a run is queued. A run itself loads what Picture says.
 AFTER_RUN = ("下一张", "停留", "随机")
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tif", ".tiff")
@@ -35,75 +35,60 @@ MAX_PICTURES = 5000
 # see-through part. The pack's mask nodes know that stand-in ("no mask").
 NO_MASK_SIZE = (64, 64)
 
-OUTSIDE = (
-    "Image Folder reads only folders inside ComfyUI's input or output folder. "
-    "Drop your folder on the node, or press Add, and its pictures are copied in."
-)
-NO_FOLDER = 'Image Folder: there is no folder "{folder}" in ComfyUI\'s {source} folder.'
-NO_PICTURES = 'Image Folder: no pictures in "{folder}". Add some, or choose another folder.'
-NONE_LEFT = "Image Folder: none of the picked pictures are in the folder anymore. Pick again on the node."
-NONE_PICKED = "Image Folder: no picture is picked. Tick at least one on the node, or press All."
-BAD_PICKS = "Image Folder: the list of picked pictures cannot be read. Pick again on the node."
-THE_END = (
-    "Image Folder: that was the last picture ({count} of {count}). "
-    "Set Picture back to 1 to go through them again."
-)
+NOT_CHOSEN = "批量加载图片：还没有选文件夹。点卡片上的「打开文件夹」选一个。"
+NOT_WHOLE = '批量加载图片：请填完整路径，像 D:\\图片\\待处理 这样，"{folder}" 不是。'
+NO_FOLDER = '批量加载图片：找不到文件夹 "{folder}"。'
+NO_PICTURES = '批量加载图片："{folder}" 里没有图片。'
+NO_PICTURE = '批量加载图片：这个文件夹里没有这张图。'
+NONE_LEFT = "批量加载图片：选中的图片都不在文件夹里了。在节点上重新勾一次。"
+NONE_PICKED = "批量加载图片：一张都没勾。在节点上勾至少一张，或者点「全选」。"
+BAD_PICKS = "批量加载图片：选中列表读不出来。在节点上重新勾一次。"
+THE_END = "批量加载图片：已经是最后一张（共 {count} 张）。把「当前位置」改回 1 就从头再来。"
+DIALOG_BUSY = "批量加载图片：已经有一个文件夹对话框开着了（看屏幕中间或任务栏），先把它选完或取消。"
+NO_DIALOG = "批量加载图片：这台机器上弹不出文件夹对话框，请把完整路径粘进「文件夹」栏。"
+
+# Values a workflow saved by an older release still carries.
+_ONE_PER_RUN = ("每次一张", "one per run")
+_STARTS_OVER = ("从头再来", "重头再来", "start over")
 
 
-def shown_folder(folder: str, source: str = "input") -> str:
-    """The folder the way a message names it: the top folder has no name of its own."""
-    text = clean_folder(folder)
-    return text or f"the {source} folder"
+def one_per_run(run) -> bool:
+    """每次一张, and the English value older workflows saved."""
+    return str(run) in _ONE_PER_RUN
 
 
-def clean_folder(folder) -> str:
-    """A folder name with forward slashes and no stray separators. Raises when
-    it points anywhere but below the root."""
-    text = str(folder or "").strip().replace("\\", "/")
-    if text.startswith("/") or text.startswith("~") or re.match(r"^[A-Za-z]:", text):
-        raise ValueError(OUTSIDE)
-    parts = [part for part in text.split("/") if part not in ("", ".")]
-    if any(part == ".." for part in parts):
-        raise ValueError(OUTSIDE)
-    return "/".join(parts)
+def starts_over(at_the_end) -> bool:
+    """从头再来, and the 重头再来 / start over an older workflow saved."""
+    return str(at_the_end) in _STARTS_OVER
 
 
-def looks_full(folder) -> bool:
-    """A whole path, typed or pasted, and not a folder name below the root."""
-    text = str(folder or "").strip().strip('"').replace("\\", "/")
-    return text.startswith("/") or text.startswith("~") or bool(re.match(r"^[A-Za-z]:", text))
+def whole_path(folder) -> Path:
+    """The folder as a real path on this machine. Raises when it is not a
+    whole path, or when there is nothing there."""
+    text = str(folder or "").strip().strip('"').strip("'")
+    if text.lower().startswith("file:///"):
+        text = unquote(text[8:])
+    elif text.lower().startswith("file://"):
+        text = unquote(text[7:])
+    text = os.path.expandvars(os.path.expanduser(text.strip()))
+    if not text:
+        raise ValueError(NOT_CHOSEN)
+    path = Path(text)
+    if not path.is_absolute():
+        raise ValueError(NOT_WHOLE.format(folder=text))
+    try:
+        path = path.resolve()
+    except OSError:
+        raise ValueError(NO_FOLDER.format(folder=text)) from None
+    if not path.is_dir():
+        raise ValueError(NO_FOLDER.format(folder=text))
+    return path
 
 
-def place_inside(folder, roots: dict) -> tuple[str, str] | None:
-    """A whole path as (source, folder below it), when it lies inside one of
-    ComfyUI's own folders. People paste the path their file manager shows.
-
-    This compares text only. A path that is outside those folders is never
-    looked up on disk, and one on another machine is refused from its text."""
-    text = str(folder or "").strip().strip('"').replace("\\", "/")
-    if not looks_full(text) or text.startswith("//"):
-        return None
-    full = os.path.normpath(os.path.expanduser(text))
-    for source, root in roots.items():
-        for base in {os.path.normpath(str(root)), os.path.realpath(str(root))}:
-            if full == base:
-                return source, ""
-            if full.startswith(base.rstrip(os.sep) + os.sep):
-                return source, full[len(base):].strip(os.sep).replace(os.sep, "/")
-    return None
-
-
-def safe_folder(root, folder, source: str = "input") -> Path:
-    """The folder as a real path below `root`. A link that leads out of the
-    root is refused like any other way out."""
-    relative = clean_folder(folder)
-    top = Path(root).resolve()
-    target = top.joinpath(*relative.split("/")).resolve() if relative else top
-    if target != top and top not in target.parents:
-        raise ValueError(OUTSIDE)
-    if not target.is_dir():
-        raise ValueError(NO_FOLDER.format(folder=relative, source=source))
-    return target
+def shown_path(folder) -> str:
+    """The folder the way messages and the node name it, with the separators
+    the system uses."""
+    return str(whole_path(folder))
 
 
 def natural_key(name: str):
@@ -111,52 +96,42 @@ def natural_key(name: str):
     return [int(part) if part.isdigit() else part.casefold() for part in re.split(r"(\d+)", str(name))]
 
 
-def list_folders(root, folder, source: str = "input") -> list[str]:
-    """The folders directly inside `folder`, for the Browse list."""
-    base = safe_folder(root, folder, source)
-    names = []
-    for entry in base.iterdir():
-        if entry.name.startswith(".") or entry.is_symlink() or not entry.is_dir():
-            continue
-        names.append(entry.name)
-    return sorted(names, key=natural_key)
-
-
-def list_pictures(root, folder, subfolders: bool = False, sort: str = "name", source: str = "input",
+def list_pictures(folder, subfolders: bool = False, sort: str = "名称",
                   limit: int = MAX_PICTURES) -> list[dict]:
     """Every picture in the folder: {"name": path below the folder, "path",
-    "mtime", "size"}, in the chosen order. Hidden files, links that lead out
-    of the root and anything that is not a picture are left out."""
-    base = safe_folder(root, folder, source)
-    top = Path(root).resolve()
+    "mtime", "size"}, in the chosen order. Hidden files and anything that is
+    not a picture are left out."""
+    base = whole_path(folder)
     found: list[dict] = []
-    if subfolders:
-        walker = os.walk(base, followlinks=False)
-    else:
-        walker = [(str(base), [], sorted(os.listdir(base)))]
-    for directory, folders, files in walker:
-        folders[:] = sorted(name for name in folders if not name.startswith("."))
-        for name in files:
-            if name.startswith(".") or not name.lower().endswith(IMAGE_EXTENSIONS):
-                continue
-            path = Path(directory) / name
-            try:
-                real = path.resolve()
-                if top not in real.parents or not real.is_file():
+    try:
+        if subfolders:
+            walker = os.walk(base, followlinks=False)
+        else:
+            walker = [(str(base), [], sorted(os.listdir(base)))]
+        for directory, folders, files in walker:
+            folders[:] = sorted(name for name in folders if not name.startswith("."))
+            for name in files:
+                if name.startswith(".") or not name.lower().endswith(IMAGE_EXTENSIONS):
                     continue
-                stat = real.stat()
-            except OSError:
-                continue
-            found.append({
-                "name": path.relative_to(base).as_posix(),
-                "path": real,
-                "mtime": float(stat.st_mtime),
-                "size": int(stat.st_size),
-            })
+                path = Path(directory) / name
+                try:
+                    if not path.is_file():
+                        continue
+                    stat = path.stat()
+                except OSError:
+                    continue
+                found.append({
+                    "name": path.relative_to(base).as_posix(),
+                    "path": path,
+                    "mtime": float(stat.st_mtime),
+                    "size": int(stat.st_size),
+                })
+                if len(found) >= limit:
+                    break
             if len(found) >= limit:
                 break
-        if len(found) >= limit:
-            break
+    except OSError:
+        raise ValueError(NO_FOLDER.format(folder=base)) from None
     if sort == "最新优先":
         found.sort(key=lambda item: (-item["mtime"], natural_key(item["name"])))
     elif sort == "最旧优先":
@@ -164,6 +139,26 @@ def list_pictures(root, folder, subfolders: bool = False, sort: str = "name", so
     else:
         found.sort(key=lambda item: natural_key(item["name"]))
     return found
+
+
+def picture_at(folder, name) -> Path:
+    """One picture in the folder, as a real path. The name comes from the
+    gallery or from a typed one, so it is only read as a path below the
+    folder: anything that leaves it is refused."""
+    base = whole_path(folder)
+    parts = [part for part in str(name or "").replace("\\", "/").split("/") if part not in ("", ".")]
+    if not parts or any(part == ".." for part in parts):
+        raise ValueError(NO_PICTURE)
+    path = base.joinpath(*parts)
+    try:
+        real = path.resolve()
+    except OSError:
+        raise ValueError(NO_PICTURE) from None
+    if base != real and base not in real.parents:
+        raise ValueError(NO_PICTURE)
+    if not real.is_file() or not real.name.lower().endswith(IMAGE_EXTENSIONS):
+        raise ValueError(NO_PICTURE)
+    return real
 
 
 def parse_picked(text) -> list[str] | None:
@@ -197,11 +192,11 @@ def choose(pictures: list[dict], picked: list[str] | None) -> list[dict]:
 
 def which(count: int, position, run: str, at_the_end: str) -> list[int]:
     """Which of `count` picked pictures this run loads, counted from 0."""
-    if run != "每次一张":
+    if not one_per_run(run):
         return list(range(count))
     place = max(1, int(position))
     if place > count:
-        if at_the_end == "重头再来":
+        if starts_over(at_the_end):
             return [(place - 1) % count]
         raise RuntimeError(THE_END.format(count=count))
     return [place - 1]
@@ -246,6 +241,8 @@ def fingerprint(pictures: list[dict]) -> str:
 
 
 # --- thumbnails for the gallery -------------------------------------------------
+# A tile reads one of these, and so does the preview that opens under the
+# pointer after a moment: the same file, decoded once at each size.
 _THUMBS: "OrderedDict[tuple, bytes]" = OrderedDict()
 _THUMBS_LOCK = threading.Lock()
 _THUMBS_BYTES = 24 * 1024 * 1024
@@ -257,7 +254,7 @@ def thumbnail(path, edge: int = 160) -> bytes:
     """A small JPEG of the picture. A see-through part shows on the gallery's
     dark tile. Kept in a small cache keyed by the file's state."""
     global _thumbs_size
-    edge = max(48, min(512, int(edge)))
+    edge = max(48, min(1024, int(edge)))
     real = Path(path)
     stat = real.stat()
     key = (str(real), int(stat.st_mtime_ns), int(stat.st_size), edge)
@@ -296,31 +293,33 @@ __all__ = [
     "AFTER_RUN",
     "AT_THE_END",
     "BAD_PICKS",
+    "DIALOG_BUSY",
     "IMAGE_EXTENSIONS",
     "MAX_PICTURES",
     "NONE_LEFT",
     "NONE_PICKED",
+    "NO_DIALOG",
     "NO_FOLDER",
     "NO_MASK_SIZE",
     "NO_PICTURES",
-    "OUTSIDE",
+    "NO_PICTURE",
+    "NOT_CHOSEN",
+    "NOT_WHOLE",
     "RUNS",
     "SORTS",
-    "SOURCES",
     "THE_END",
     "choose",
-    "clean_folder",
     "fingerprint",
-    "list_folders",
     "list_pictures",
     "load_picture",
-    "looks_full",
-    "place_inside",
     "natural_key",
+    "one_per_run",
     "output_name",
     "parse_picked",
-    "safe_folder",
-    "shown_folder",
+    "picture_at",
+    "shown_path",
+    "starts_over",
     "thumbnail",
     "which",
+    "whole_path",
 ]

@@ -509,11 +509,12 @@ export function mountWidgetCard(node, { rows, minWidth = 300, first = false, hid
   };
 
   // `row.primary` paints the button in the pack's color, for the one button a
-  // node is really about; `row.width` gives it room.
+  // node is really about; `row.width` gives it room, `row.full` the whole row.
   const buildButton = (row, into) => {
     const button = el("button", row.primary ? "zzmaus-card-btn primary" : "zzmaus-card-btn", row.text ?? "Go");
     button.type = "button"; button.title = row.title ?? "";
-    if (Number(row.width) > 0) button.style.width = `${Number(row.width)}px`;
+    if (row.full) { button.style.width = "100%"; button.style.height = "100%"; }
+    else if (Number(row.width) > 0) button.style.width = `${Number(row.width)}px`;
     button.addEventListener("click", () => row.onClick?.(node, state, button));
     into.append(button);
   };
@@ -557,6 +558,9 @@ export function mountWidgetCard(node, { rows, minWidth = 300, first = false, hid
       line.classList.add("area");
       if (row.grow) { line.classList.add("grow"); line.style.minHeight = `${rowHeight(row)}px`; }
       else line.style.height = `${rowHeight(row)}px`;
+    } else if (row.full) {
+      line.style.gridTemplateColumns = "1fr";
+      if (row.height) line.style.height = `${rowHeight(row)}px`;
     } else {
       const label = el("span", "zzmaus-card-label", row.label ?? names[0]);
       label.title = row.title ?? widgetTooltip(node, names[0], findWidget(node, names[0]));

@@ -7,12 +7,15 @@
 // other value. With "每次一张" the tile the next run loads is ringed, and
 // Picture moves on by one each time a run is queued.
 //
-// The folder is a whole path on this machine, the one the folder dialog hands
-// back: the pictures are read where they are, and nothing is copied. That
-// dialog is the system's own, opened by the server, so the panel asks for it
-// and waits while the person navigates. 添加 is gone with the input folder it
-// used to fill; 📋 reads what was copied in Explorer instead, which is the one
-// way a page can name a real path - a drop carries none.
+// The folder the node reads is a whole path on this machine, so the pictures
+// are read where they already are and nothing is copied. The two ways of
+// bringing pictures in are the browser's own: Add opens the system's file
+// picker for pictures or for a whole folder, and a drop on the node does the
+// same thing without the picker. A page can never learn where a file came
+// from, so those copies land in ComfyUI's temp folder (temp/zzm_drop), and the
+// node moves there and ticks what just came in. A browser asks its own
+// question about a chosen folder ("Upload 74 files to this site?"); the note
+// on the node says what it means while the file explorer is open.
 
 import { api } from "/scripts/api.js";
 import { app } from "/scripts/app.js";
@@ -21,8 +24,7 @@ import { fillNodeHeight } from "../shared/panel_layout.mjs";
 import { isForeignRun } from "../shared/prompt_scope.mjs";
 import { commitWidgetValue } from "../shared/widget_card_math.mjs";
 import {
-  askClipboard,
-  askForFolder,
+  comfyFolders,
   countLine,
   isPicked,
   listAddress,
@@ -32,7 +34,6 @@ import {
   pickRange,
   pickedNames,
   placeOf,
-  resolveAddress,
   serializePicked,
   thumbAddress,
   togglePick,
@@ -46,12 +47,25 @@ const MIN_HEIGHT = 204;
 // Tiles are added this many at a time: a folder of thousands stays light.
 const SHOWN_STEP = 300;
 const WATCHED = ["folder", "subfolders", "sort", "pictures", "run", "position", "at_the_end"];
-// How long the pointer rests on a tile before the preview is read. A folder of
-// thousands is a lot of pictures to ask for, so passing over one is not enough.
+// Added or dropped pictures land in this folder under ComfyUI's temp.
+const DROP_FOLDER = "zzm_drop";
+// How long the pointer rests on a tile before the preview is read.
 const HOVER_DELAY = 1000;
 // The preview's longest side, and the size the copy it shows is made at.
 const VIEW_EDGE = 460;
 const VIEW_THUMB = 720;
+const PICTURE = /\.(png|jpe?g|webp|bmp|gif|tiff?)$/i;
+// A dropped folder is copied up to this many pictures.
+const COPY_LIMIT = 3000;
+// From here on a folder is "really big": the node asks before it copies.
+const BIG_COUNT = 300;
+const BIG_BYTES = 1024 ** 3;
+// On the node while the file explorer is open for a folder.
+const CHOOSING = [
+  "在文件浏览器里选择文件夹",
+  "选中的图片会放进 ComfyUI 的临时文件夹（temp/zzm_drop），节点随后切过去。",
+  '浏览器可能先问「是否上传文件到此站点？」—— 那就是这次复制，站点就是你的 ComfyUI。',
+];
 
 function ensureCss() {
   if (document.getElementById(CSS_ID)) return;
@@ -80,8 +94,15 @@ function ensureCss() {
 .zzmaus-if-cell.picked .zzmaus-if-num{display:block;}
 .zzmaus-if-cell.done .zzmaus-if-num{background:${BRAND};color:#fff;}
 .zzmaus-if.dropping .zzmaus-if-grid{border-color:${BRAND};box-shadow:inset 0 0 0 1px ${BRAND};background:var(--zzm-view,#18191b);}
+.zzmaus-if-menu{position:fixed;z-index:10000;box-sizing:border-box;min-width:170px;padding:4px;border:1px solid rgba(192,92,67,.5);border-radius:8px;background:var(--zzm-view,#18191b);box-shadow:0 12px 32px rgba(0,0,0,.6);font:11.5px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+.zzmaus-if-ask{position:fixed;z-index:10001;box-sizing:border-box;width:300px;padding:12px;border:1px solid var(--zzm-warn,#ffca16);border-radius:8px;background:var(--zzm-view,#18191b);box-shadow:0 12px 32px rgba(0,0,0,.6);color:var(--zzm-text,#edeef0);font:11.5px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
+.zzmaus-if-ask b{display:block;margin-bottom:6px;color:var(--zzm-warn,#ffca16);font-size:12.5px;}
+.zzmaus-if-ask .zzmaus-if-browse-foot{padding:10px 0 0;border-top:0;}
 .zzmaus-if-pick{display:block;margin:12px auto 0;height:26px;padding:0 12px;border:1px solid ${BRAND};border-radius:6px;background:rgba(192,92,67,.16);color:var(--zzm-text,#edeef0);font:700 11.5px/24px "Segoe UI",sans-serif;letter-spacing:.03em;cursor:pointer;}
 .zzmaus-if-pick:hover{background:${BRAND};color:#fff;}
+.zzmaus-if-cover{position:absolute;left:6px;right:6px;top:28px;bottom:6px;z-index:2;box-sizing:border-box;display:flex;flex-direction:column;justify-content:safe center;gap:6px;padding:12px 14px;overflow:auto;border:1px solid ${BRAND};border-radius:6px;background:var(--zzm-view,#18191b);color:var(--zzm-text,#edeef0);font-size:11.5px;line-height:1.45;text-align:center;}
+.zzmaus-if-cover[hidden]{display:none;}
+.zzmaus-if-cover b{color:var(--zzm-text,#edeef0);font-size:12.5px;}
 .zzmaus-if-note{grid-column:1/-1;align-self:center;padding:22px 12px;color:var(--zzm-dim,#b0b4ba);font-size:11.5px;line-height:1.45;text-align:center;}
 .zzmaus-if-more{grid-column:1/-1;height:24px;border:1px dashed var(--zzm-line-soft,#363a3f);border-radius:5px;background:transparent;color:var(--zzm-dim,#b0b4ba);font:600 11.5px/22px "Segoe UI",sans-serif;cursor:pointer;}
 .zzmaus-if-more:hover{color:var(--zzm-text,#edeef0);border-color:${BRAND};}
@@ -89,6 +110,8 @@ function ensureCss() {
 .zzmaus-if-view.on{display:block;}
 .zzmaus-if-view img{display:block;width:100%;height:auto;border-radius:4px;background:var(--zzm-line-soft,#363a3f);}
 .zzmaus-if-view span{display:block;padding:3px 2px 0;overflow:hidden;color:var(--zzm-dim,#b0b4ba);font:11px/14px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;text-overflow:ellipsis;white-space:nowrap;}
+.zzmaus-if-browse-foot{flex:none;display:flex;gap:6px;justify-content:flex-end;padding:6px 8px;border-top:1px solid var(--zzm-line-soft,#363a3f);}
+.zzmaus-if-browse-foot .use{background:${BRAND};border-color:${BRAND};color:#fff;}
 `;
   document.head.appendChild(style);
 }
@@ -143,10 +166,6 @@ function normalizeLegacyValues(node) {
   }
 }
 
-function isLinked(node, name) {
-  return Boolean(node.inputs?.some((input) => (input?.widget?.name ?? input?.name) === name && input.link != null));
-}
-
 // A workflow saved while the node still had a 来源 widget holds one value too
 // many, so every widget after it took its neighbour's value. The old folder was
 // a name below ComfyUI's input or output, which means nothing now: the whole set
@@ -163,6 +182,10 @@ function resetShiftedValues(node) {
     const widget = widgetOf(node, name);
     if (widget) widget.value = value;
   }
+}
+
+function isLinked(node, name) {
+  return Boolean(node.inputs?.some((input) => (input?.widget?.name ?? input?.name) === name && input.link != null));
 }
 
 // --- the tiles -------------------------------------------------------------------
@@ -189,10 +212,10 @@ function rebuild(state) {
   const hint = (text, offer) => {
     const note = el("div", "zzmaus-if-note", text);
     if (offer) {
-      const pick = el("button", "zzmaus-if-pick", "📂 打开文件夹…");
+      const pick = el("button", "zzmaus-if-pick", "打开文件夹…");
       pick.type = "button";
-      pick.title = "从这台电脑上选一个文件夹。里面的图片就地读取，不复制。";
-      pick.addEventListener("click", () => pickFolder(state));
+      pick.title = "用系统的文件夹选择框挑一个文件夹：里面的图片会放进临时文件夹，节点切过去并可以逐张跑。";
+      pick.addEventListener("click", () => chooseFolder(state));
       note.append(pick);
     }
     state.grid.append(note);
@@ -203,9 +226,9 @@ function rebuild(state) {
     if (state.cleared) {
       hint("已清空。点 ↻ 重新读取，或选一个文件夹。", true);
     } else if (!state.shown.folder) {
-      hint(state.busy ? "正在读取文件夹…" : "还没有选文件夹。点下面的按钮，从这台电脑上挑一个；图片就地读取，不复制。", !state.busy);
+      hint(state.busy ? "正在读取文件夹…" : "还没有选文件夹。点下面的按钮挑一个，或者把图片拖到节点上：", !state.busy);
     } else {
-      hint(state.busy ? "正在读取文件夹…" : "这个文件夹里没有图片。", !state.busy);
+      hint(state.busy ? "正在读取文件夹…" : "这个文件夹里没有图片。把图片拖到节点上，或者：", !state.busy);
     }
   } else {
     for (const picture of state.list.slice(0, state.limit)) {
@@ -238,17 +261,16 @@ function paint(state) {
     cell.classList.toggle("done", state.done.has(name));
     cell.lastChild.textContent = place ? String(place) : "";
   }
-  const line = state.picking
-    ? { text: "在对话框里选文件夹…", warn: false }
-    : !now.folder ? { text: "no folder", warn: false }
-      : state.error ? { text: "folder not found", warn: true }
-        : state.busy ? { text: "looking...", warn: false }
-          : state.cleared ? { text: "未载入", warn: false } : countLine(picked, names, now);
+  const line = state.copying
+    ? { text: `copying ${state.copying.done} of ${state.copying.total}`, warn: false }
+    : state.error ? { text: "folder not found", warn: true }
+      : state.busy ? { text: "looking...", warn: false }
+        : state.cleared ? { text: "未载入", warn: false } : countLine(picked, names, now);
   state.chip.textContent = line.text;
   state.chip.classList.toggle("warn", line.warn);
   state.chip.title = [line.text, state.full ? "这个文件夹只列出前 5000 张。" : "", state.loadedLine].filter(Boolean).join("\n");
-  state.paste.disabled = state.picking;
-  state.paste.title = "用剪贴板里的文件：在资源管理器里选中一张图或一个文件夹，Ctrl+C，再点这里。图片就地读取，不复制。";
+  state.add.disabled = false;
+  state.add.title = "添加图片或整个文件夹：用系统的选择框，选中的会放进临时文件夹（temp/zzm_drop）。也可以直接拖到节点上。";
 }
 
 // ---------------------------------------------------------------------------
@@ -284,8 +306,8 @@ async function refresh(state) {
   if (state.cleared) { state.busy = false; rebuild(state); return; }
   const now = settings(state.node);
   const token = ++state.token;
-  // No folder yet: nothing to ask for, and the gallery says so instead of
-  // showing a request that cannot succeed.
+  state.busy = true;
+  // No folder yet: nothing to ask for.
   if (!now.folder) {
     state.list = [];
     state.names = [];
@@ -296,7 +318,6 @@ async function refresh(state) {
     rebuild(state);
     return;
   }
-  state.busy = true;
   const shown = { folder: now.folder, subfolders: now.subfolders, sort: now.sort };
   try {
     const response = await api.fetchApi(listAddress(shown));
@@ -320,19 +341,7 @@ async function refresh(state) {
   state.shown = shown;
   state.names = state.list.map((picture) => picture.name);
   state.limit = SHOWN_STEP;
-  takeWanted(state);
   rebuild(state);
-}
-
-// A picture named as a whole path (a dropped one, or one on the clipboard):
-// the folder is being read, and this is the one the person pointed at.
-function takeWanted(state) {
-  const want = state.want;
-  if (!want) return;
-  state.want = "";
-  if (!state.names.includes(want)) return;
-  write(state.node, "pictures", JSON.stringify([want]));
-  if (settings(state.node).run === "每次一张") write(state.node, "position", placeOf([want], state.names, want));
 }
 
 function scheduleRefresh(state, delay = 160) {
@@ -345,112 +354,250 @@ function setPicked(state, picked) {
   paint(state);
 }
 
-// --- choosing a folder -----------------------------------------------------------
-// The server opens the system's own folder dialog on this machine, so the folder
-// it answers with is a whole path and the pictures are read where they are. The
-// request stays open while the person navigates, so the button says what it is
-// waiting for.
-async function pickFolder(state) {
-  if (state.picking) return;
-  state.picking = true;
-  paint(state);
+// --- what the node says while a folder comes in -----------------------------------
+// The note over the tiles: what happens with a folder that is being chosen,
+// and how far a copy is.
+function cover(state) {
+  const copying = state.copying;
+  const lines = copying
+    ? [`Copying ${copying.done} of ${copying.total} pictures`, `from "${copying.name}" into ComfyUI's temp folder (temp/${copying.target}).`]
+    : state.choosing ? CHOOSING : null;
+  state.cover.hidden = !lines;
+  if (!lines) return;
+  [...state.cover.children].forEach((line, index) => { line.textContent = lines[index] ?? ""; line.hidden = !lines[index]; });
+}
+
+function endChoosing(state) {
+  state.choosing?.abort();
+  state.choosing = null;
+  cover(state);
+}
+
+// Open the file explorer for a folder, and say on the node what happens with
+// it. The note goes when a folder is chosen or the choice is called off.
+function chooseFolder(state) {
+  endChoosing(state);
+  const abort = new AbortController();
+  state.choosing = abort;
+  const opened = performance.now();
+  const stop = () => { if (state.choosing === abort) endChoosing(state); };
+  state.pickFolder.addEventListener("cancel", stop, { signal: abort.signal });
+  // A browser that does not report a called-off choice: no click or key
+  // reaches the page while the file explorer or the browser's question is
+  // open, so the next one means both are closed.
+  const later = () => { if (performance.now() - opened > 700) stop(); };
+  window.addEventListener("pointerdown", later, { capture: true, signal: abort.signal });
+  window.addEventListener("keydown", later, { capture: true, signal: abort.signal });
+  cover(state);
+  state.pickFolder.click();
+}
+
+// --- adding pictures -------------------------------------------------------------
+const isPicture = (file) => String(file?.type ?? "").startsWith("image/") || PICTURE.test(String(file?.name ?? ""));
+
+async function upload(file, subfolder, overwrite) {
+  const body = new FormData();
+  body.append("image", file, file.name);
+  // temp, not input: the picture came from the person's own folder and only
+  // passes through here, so ComfyUI's input folder stays as it was.
+  body.append("type", "temp");
+  if (subfolder) body.append("subfolder", subfolder);
+  if (overwrite) body.append("overwrite", "true");
   try {
-    const folder = await askForFolder(settings(state.node).folder);
-    if (!folder || !state.alive) return;                 // called off: nothing changes
-    state.want = "";
-    setCleared(state, false);
-    if (!write(state.node, "folder", folder)) await refresh(state);
-    else notifyZzmChange();
-  } catch (error) {
-    showToast({ severity: "warn", detail: String(error?.message ?? error) || "打不开文件夹对话框。" });
-  } finally {
-    state.picking = false;
-    if (state.alive) paint(state);
+    const response = await api.fetchApi("/upload/image", { method: "POST", body });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.name ? String(data.name) : null;
+  } catch {
+    return null;
   }
 }
 
-// Open this folder, and pick this one picture in it once the list is in.
-async function goTo(state, folder, name) {
-  if (!state.alive) return;
-  state.want = String(name ?? "");
+// Loose pictures go into ComfyUI's temp drop folder, and the node moves there
+// with them ticked: what was just brought in is what the person wants to use.
+async function addFiles(state, files) {
+  const images = [...(files ?? [])].filter(isPicture);
+  if (!images.length) return false;
+  const added = [];
+  let failed = 0;
+  for (const file of images) {
+    const name = await upload(file, DROP_FOLDER, false);
+    if (name) added.push(name); else failed += 1;
+  }
+  const folders = await comfyFolders();
+  const target = `${folders.temp || "temp"}/${DROP_FOLDER}`;
+  // 往里加图片说明用户要看东西：先退出"已清空"状态，否则 refresh 不会执行
   setCleared(state, false);
-  if (!write(state.node, "folder", folder)) await refresh(state);
-  else notifyZzmChange();
+  if (added.length) write(state.node, "folder", target);
+  await refresh(state);
+  const came = added.filter((name) => state.names.includes(name));
+  if (came.length) setPicked(state, came);
+  if (added.length) showToast({ detail: `Added ${added.length} picture${added.length === 1 ? "" : "s"} to ${target}.` });
+  if (failed) showToast({ severity: "warn", detail: `${failed} file${failed === 1 ? "" : "s"} could not be added.` });
+  return true;
 }
 
-// What is on the clipboard: the folder a copied file sits in, plus the file. A
-// browser never hands a page the path of a dropped file, so this is how one
-// picture gets named for real.
-async function useClipboard(state) {
-  if (state.picking) return;
-  state.picking = true;
+function folderName(name) {
+  return String(name ?? "").replace(/[\\/:*?"<>|]+/g, "_").replace(/^\.+/, "").trim() || "pictures";
+}
+
+function sizeText(bytes) {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  return `${Math.max(1, Math.round(bytes / 1024 ** 2))} MB`;
+}
+
+// A really big folder: say how big, and let the person decide. Copying makes
+// a second copy on disk, and that many pictures take a while.
+let openAsk = null;
+
+function closeAsk(answer = false) {
+  const ask = openAsk;
+  openAsk = null;
+  if (!ask) return;
+  ask.abort.abort();
+  ask.root.remove();
+  ask.done(answer);
+}
+
+function askBig(state, name, pictures) {
+  const bytes = pictures.reduce((sum, item) => sum + (Number(item.file?.size) || 0), 0);
+  if (pictures.length <= BIG_COUNT && bytes <= BIG_BYTES) return Promise.resolve(true);
+  closeAsk(false);
+  return new Promise((done) => {
+    const root = el("div", "zzmaus-if-ask");
+    const many = pictures.length.toLocaleString("en-US");
+    root.append(el("b", "", `Copy ${many} pictures into ComfyUI's temp folder?`));
+    root.append(el("div", "", `"${name}" holds ${many} pictures, ${sizeText(bytes)}. The copies take that much disk space again, and it can take a while.`));
+    if (pictures.length > COPY_LIMIT) root.append(el("div", "", `Only the first ${COPY_LIMIT.toLocaleString("en-US")} are copied.`));
+    const foot = el("div", "zzmaus-if-browse-foot");
+    const cancel = el("button", "zzmaus-if-btn", "Cancel");
+    const go = el("button", "zzmaus-if-btn use", "复制进来");
+    cancel.type = "button"; go.type = "button";
+    foot.append(cancel, go);
+    root.append(foot);
+    const abort = new AbortController();
+    openAsk = { root, abort, done };
+    cancel.addEventListener("click", () => closeAsk(false));
+    go.addEventListener("click", () => closeAsk(true));
+    document.body.append(root);
+    const box = state.grid.getBoundingClientRect();
+    root.style.left = `${Math.max(8, Math.min(window.innerWidth - 308, box.left + (box.width - 300) / 2))}px`;
+    root.style.top = `${Math.max(8, Math.min(window.innerHeight - 190, box.top + 16))}px`;
+    window.addEventListener("keydown", (event) => { if (event.key === "Escape") closeAsk(false); }, { capture: true, signal: abort.signal });
+    root.addEventListener("wheel", (event) => event.stopPropagation(), { signal: abort.signal });
+  });
+}
+
+// A whole folder from the computer: its pictures are copied into
+// input/<its name>, folders inside it too, and the node moves there. Copying
+// the same folder again writes over its copies instead of piling up doubles.
+async function copyFolder(state, name, pictures) {
+  if (!(await askBig(state, name, pictures)) || !state.alive) return;
+  const target = `${DROP_FOLDER}/${folderName(name)}`;
+  const queue = pictures.slice(0, COPY_LIMIT);
+  state.copying = { done: 0, total: queue.length, name, target };
   paint(state);
-  try {
-    const { folder, name } = await askClipboard();
-    await goTo(state, folder, name);
-  } catch (error) {
-    showToast({ severity: "warn", detail: String(error?.message ?? error) || "剪贴板里没有文件。" });
-  } finally {
-    state.picking = false;
-    if (state.alive) paint(state);
+  cover(state);
+  let copied = 0;
+  const worker = async () => {
+    for (;;) {
+      const next = queue.shift();
+      if (!next || !state.alive) return;
+      if (await upload(next.file, next.folder ? `${target}/${next.folder}` : target, true)) copied += 1;
+      state.copying.done += 1;
+      paint(state);
+      cover(state);
+    }
+  };
+  await Promise.all([worker(), worker(), worker()]);
+  const total = state.copying.total;
+  state.copying = null;
+  cover(state);
+  if (!state.alive) return;
+  setCleared(state, false);
+  const folders = await comfyFolders();
+  const moved = write(state.node, "folder", `${folders.temp}/${target}`) | 0;
+  if (moved) notifyZzmChange(); else await refresh(state);
+  paint(state);
+  showToast({ detail: `Copied ${copied} picture${copied === 1 ? "" : "s"} from "${name}" into ComfyUI's temp folder (temp/${target}).` });
+  if (copied < total) showToast({ severity: "warn", detail: `${total - copied} could not be copied.` });
+  if (pictures.length > COPY_LIMIT) showToast({ severity: "warn", detail: `Only the first ${COPY_LIMIT} pictures were copied.` });
+}
+
+// What a drop carries, read while the drop is still happening: the browser
+// hands out a dropped folder only then.
+function dropped(event) {
+  const folders = [];
+  const files = [];
+  for (const item of [...(event?.dataTransfer?.items ?? [])]) {
+    if (item.kind !== "file") continue;
+    const entry = item.webkitGetAsEntry?.();
+    if (entry?.isDirectory) folders.push(entry);
+    else { const file = item.getAsFile?.(); if (file) files.push(file); }
   }
+  if (!folders.length && !files.length) files.push(...(event?.dataTransfer?.files ?? []));
+  return { folders, files };
 }
 
-// --- what a drop carries ---------------------------------------------------------
-// A browser hides the path of a dropped file, but ComfyUI's desktop window and
-// some browsers still hand one over. When there is one, the node reads that very
-// folder: nothing is copied.
-function asWholePath(text) {
-  const raw = String(text ?? "").trim().replace(/^["']|["']$/g, "");
-  if (!raw) return "";
-  if (/^file:\/\//i.test(raw)) return raw;
-  if (/^[a-z]:[\\/]/i.test(raw)) return raw;
-  if (raw.startsWith("\\\\")) return raw;                // a share on the network
-  return "";
-}
-
-function pathFromEvent(event) {
-  const transfer = event?.dataTransfer;
-  if (!transfer) return "";
-  for (const type of ["text/uri-list", "text/plain"]) {
-    let text = "";
-    try { text = transfer.getData(type); } catch { text = ""; }
-    for (const line of String(text ?? "").split(/\r?\n/)) {
-      const hit = asWholePath(line);
-      if (hit) return hit;
+// Every picture in a dropped folder, with the folder it sits in below it.
+async function picturesIn(entry, below = "", found = []) {
+  const reader = entry.createReader();
+  for (;;) {
+    const batch = await new Promise((resolve) => reader.readEntries(resolve, () => resolve([])));
+    if (!batch.length) break;
+    for (const child of batch) {
+      if (found.length > COPY_LIMIT) return found;
+      if (child.name.startsWith(".")) continue;
+      if (child.isDirectory) await picturesIn(child, below ? `${below}/${child.name}` : child.name, found);
+      else if (PICTURE.test(child.name)) {
+        const file = await new Promise((resolve) => child.file(resolve, () => resolve(null)));
+        if (file) found.push({ file, folder: below });
+      }
     }
   }
-  for (const file of transfer.files ?? []) {
-    const path = asWholePath(file?.path ?? "");
-    if (path) return path;
-  }
-  return "";
+  return found;
 }
 
-async function takeDrop(state, event) {
-  const path = pathFromEvent(event);
-  if (path) {
-    try {
-      const response = await api.fetchApi(resolveAddress(path));
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && data?.folder) { await goTo(state, data.folder, data.name); return; }
-    } catch { /* the message below says what to do instead */ }
+async function takeDrop(state, things) {
+  // A drop is the same thing as the picker: whatever the picker was waiting
+  // for is over now, and its note must not stay over the tiles.
+  endChoosing(state);
+  for (const entry of things.folders) {
+    const pictures = await picturesIn(entry);
+    if (!pictures.length) { showToast({ severity: "warn", detail: `No pictures in "${entry.name}".` }); continue; }
+    await copyFolder(state, entry.name, pictures);
   }
-  // No path to read: a picture already in the folder can still be picked by its
-  // name, which is all a browser tells a page about a dropped file.
-  const names = [...(event?.dataTransfer?.files ?? [])].map((file) => String(file?.name ?? ""));
-  const known = names.find((name) => state.names.includes(name));
-  if (known) {
-    setPicked(state, [known]);
-    if (settings(state.node).run === "每次一张") write(state.node, "position", placeOf([known], state.names, known));
-    paint(state);
-    showToast({ detail: `${known}：拖进来的这张已在文件夹里，按文件名选中了它。` });
-    return;
-  }
-  showToast({
-    severity: "warn",
-    detail: "浏览器不给网页本地图片的路径，拖进来读不到原文件。两个办法：点「打开文件夹」选它所在的文件夹；或者在资源管理器里选中它 Ctrl+C，回来点面板上的 📋。都是就地读取，不复制。",
-  });
+  if (!things.folders.length) await addFiles(state, things.files);
+}
+
+// Add: pictures, or a whole folder.
+let openMenu = null;
+
+function closeMenu() {
+  openMenu?.abort.abort();
+  openMenu?.root.remove();
+  openMenu = null;
+}
+
+function addMenu(state, anchor) {
+  closeMenu();
+  const root = el("div", "zzmaus-if-menu");
+  const abort = new AbortController();
+  openMenu = { root, abort };
+  const row = (text, title, run) => {
+    const button = el("button", "zzmaus-if-browse-row", text);
+    button.type = "button"; button.title = title;
+    button.addEventListener("click", () => { closeMenu(); run(); });
+    root.append(button);
+  };
+  row("图片…", "用系统的选择框挑图片，会放进临时文件夹（temp/zzm_drop）。", () => state.pickFiles.click());
+  row("整个文件夹…", "用系统的选择框挑一个文件夹，里面的图片按文件夹名放进 temp/zzm_drop。", () => chooseFolder(state));
+  document.body.append(root);
+  const box = anchor.getBoundingClientRect();
+  root.style.left = `${Math.max(8, Math.min(window.innerWidth - 180, box.left))}px`;
+  root.style.top = `${Math.max(8, Math.min(window.innerHeight - 80, box.bottom + 4))}px`;
+  window.addEventListener("pointerdown", (event) => { if (!root.contains(event.target)) closeMenu(); }, { capture: true, signal: abort.signal });
+  window.addEventListener("keydown", (event) => { if (event.key === "Escape") closeMenu(); }, { capture: true, signal: abort.signal });
 }
 
 // --- the preview that opens under the pointer ------------------------------------
@@ -544,17 +691,24 @@ function buildPanel(node) {
   const chip = el("span", "zzmaus-if-chip", "");
   const all = el("button", "zzmaus-if-btn", "全选");
   const none = el("button", "zzmaus-if-btn", "取消");
-  const paste = el("button", "zzmaus-if-btn", "📋");
+  const add = el("button", "zzmaus-if-btn", "添加");
   const reload = el("button", "zzmaus-if-btn", "↻");
   const wipe = el("button", "zzmaus-if-btn", "清空");
   all.title = "全选文件夹里的图片，之后新加的也算在内。";
   none.title = "全部取消，再点你要的那几张。";
   reload.title = "重新读取文件夹。";
   wipe.title = "清空已载入的文件夹，面板回到空白，重开工作流也保持空白。点 ↻ 或另选文件夹可以再读回来。";
-  for (const button of [all, none, paste, reload, wipe]) button.type = "button";
-  bar.append(chip, el("span", "zzmaus-if-gap"), all, none, paste, reload, wipe);
+  for (const button of [all, none, add, reload, wipe]) button.type = "button";
+  const picker = el("input");
+  picker.type = "file"; picker.multiple = true; picker.accept = "image/*"; picker.style.display = "none";
+  const folderPicker = el("input");
+  folderPicker.type = "file"; folderPicker.webkitdirectory = true; folderPicker.multiple = true; folderPicker.style.display = "none";
+  bar.append(chip, el("span", "zzmaus-if-gap"), all, none, add, reload, wipe);
   const grid = el("div", "zzmaus-if-grid");
-  root.append(bar, grid);
+  const note = el("div", "zzmaus-if-cover");
+  note.hidden = true;
+  note.append(el("b"), el("div"), el("div"));
+  root.append(bar, grid, note, picker, folderPicker);
 
   const widget = node.addDOMWidget(PANEL, PANEL, root, { serialize: false, hideOnZoom: false });
   keepDomWidgetWidthAuto(widget);
@@ -574,13 +728,13 @@ function buildPanel(node) {
 
   const abort = new AbortController();
   const state = node.__zzmausImageFolder = {
-    node, root, widget, chip, grid, paste, abort,
-    view, viewImg, viewName, viewToken: 0, hoverCell: null, hoverTimer: null,
+    node, root, widget, chip, grid, add, abort, cover: note, choosing: null,
     alive: true, list: [], names: [], cells: new Map(), done: new Set(), limit: SHOWN_STEP,
     shown: { folder: "", subfolders: false, sort: "名称" },
     token: 0, timer: null, busy: true, error: "", full: false, last: null, loadedLine: "", key: "",
+    view, viewImg, viewName, viewToken: 0, hoverCell: null, hoverTimer: null, folders: null,
     cleared: Boolean(node.properties?.zzmaus_cleared),
-    picking: false, want: "", dropTimer: null,
+    copying: null, pickFiles: picker, pickFolder: folderPicker, dropTimer: null,
   };
   document.body.append(view);
   // A tile's picture is fetched when it scrolls near the view.
@@ -622,11 +776,30 @@ function buildPanel(node) {
   none.addEventListener("click", () => setPicked(state, []), { signal });
   reload.addEventListener("click", () => { setCleared(state, false); refresh(state); }, { signal });
   wipe.addEventListener("click", () => clearLoaded(state), { signal });
-  paste.addEventListener("click", () => useClipboard(state), { signal });
-  watchPointer(state);
+  add.addEventListener("click", () => addMenu(state, add), { signal });
+  picker.addEventListener("change", async () => { await addFiles(state, picker.files); picker.value = ""; }, { signal });
+  // A folder chosen in the browser's own folder picker: every file comes with
+  // its path below that folder.
+  folderPicker.addEventListener("change", async () => {
+    endChoosing(state);
+    const groups = new Map();
+    for (const file of [...folderPicker.files]) {
+      if (!PICTURE.test(file.name) || file.name.startsWith(".")) continue;
+      const parts = String(file.webkitRelativePath || file.name).split("/");
+      const top = parts.length > 1 ? parts[0] : "pictures";
+      if (!groups.has(top)) groups.set(top, []);
+      groups.get(top).push({ file, folder: parts.slice(1, -1).join("/") });
+    }
+    folderPicker.value = "";
+    if (!groups.size) { showToast({ severity: "warn", detail: "那个文件夹里没有图片。" }); return; }
+    for (const [name, pictures] of groups) await copyFolder(state, name, pictures);
+  }, { signal });
 
-  state.pick = () => pickFolder(state);
+  state.pick = () => chooseFolder(state);
   state.refresh = () => refresh(state);
+  watchPointer(state);
+  // Where ComfyUI's temp folder is: pictures added or dropped land there.
+  comfyFolders().then((folders) => { state.folders = folders; });
 
   // A setting changed: the folder is read again, or only the marks move.
   for (const name of WATCHED) {
@@ -641,7 +814,7 @@ function buildPanel(node) {
       const moved = state.key && (now.folder !== state.shown.folder || now.subfolders !== state.shown.subfolders);
       state.key = key;
       if (moved && !state.restoring && now.pictures) write(node, "pictures", "");
-      // 换了文件夹：用户明显是想看东西，取消"已清空"状态
+      // 换了来源或文件夹：用户明显是想看东西，取消"已清空"状态
       setCleared(state, false);
       state.busy = true;
       paint(state);
@@ -663,7 +836,7 @@ function buildPanel(node) {
     });
   }
 
-  // A folder or picture dropped on the node is read where it is: nothing is copied.
+  // A folder or pictures dropped on the node are copied in.
   const carriesFiles = (event) => [...(event?.dataTransfer?.types ?? [])].includes("Files");
   chainHandler(node, "onDragOver", (event) => {
     if (!carriesFiles(event)) return false;
@@ -674,8 +847,9 @@ function buildPanel(node) {
   });
   chainHandler(node, "onDragDrop", (event) => {
     root.classList.remove("dropping");
-    if (!carriesFiles(event)) return false;
-    takeDrop(state, event);
+    const things = dropped(event);
+    if (!things.folders.length && !things.files.some(isPicture)) return false;
+    takeDrop(state, things);
     return true;
   });
 
@@ -708,7 +882,9 @@ function buildPanel(node) {
       event.preventDefault();
       event.stopPropagation();
       root.classList.remove("dropping");
-      takeDrop(state, event);
+      const things = dropped(event);
+      if (!things.folders.length && !things.files.some(isPicture)) return;
+      takeDrop(state, things);
     });
   };
   attachDropHosts();
@@ -731,7 +907,6 @@ function buildPanel(node) {
     const floor = Number(node.computeSize?.()?.[1]);
     if (Number.isFinite(floor) && node.size?.[1] <= floor + 1) node.setSize?.([Math.max(node.size[0], 340), floor + 96]);
   });
-  ensurePanelRoom(state);
   return state;
 }
 
@@ -772,8 +947,7 @@ app.registerExtension({
       if (!state) return;
       // A node that comes with a size keeps it, the smallest one too.
       if (info?.size) state.sized = true;
-      // A workflow from before the folder was a whole path: put the widgets back
-      // on their defaults, then translate the English enum values.
+      // A workflow from before the folder was a whole path: back to defaults.
       resetShiftedValues(this);
       // English values from a pre-translation workflow become the Chinese ones.
       normalizeLegacyValues(this);
@@ -804,11 +978,14 @@ app.registerExtension({
       if (!state) return;
       state.alive = false;
       clearTimeout(state.timer);
-      clearTimeout(state.hoverTimer);
       state.watcher?.disconnect();
       state.abort.abort();
+      state.choosing?.abort();
       clearTimeout(state.dropTimer);
-      state.view.remove();
+      clearTimeout(state.hoverTimer);
+      state.view?.remove();
+      if (openMenu) closeMenu();
+      if (openAsk?.root && state.grid.isConnected === false) closeAsk(false);
     });
   },
 });

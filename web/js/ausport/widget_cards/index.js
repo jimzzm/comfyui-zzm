@@ -100,49 +100,6 @@ const numberLookCorner = lookCorner(NUMBER_LOOK_MENU, "Number settings");
 // Save Video rows that only some formats read (crf, save_metadata).
 const formatReads = (name) => (values) => formatWidgetVisibility(String(values.format))[name];
 
-// 批量加载图片：卡片上的「打开文件夹」。
-// 对话框在后端打开（是系统自己的），这里自己发这一条请求，不从缩略图模块借：
-// 那份文件要是被浏览器缓存成旧版，import 失败会把这张卡片一起带走。对话框在后端打开，回来的是一整条路径，
-// 直接写进 `folder`。不经过缩略图面板，所以面板没挂上时这个按钮照样能用；按下去
-// 先改字，等对话框那几秒里眼前得有反应。
-async function openFolderDialog(start) {
-  let response;
-  try {
-    response = await api.fetchApi(`/zzmaus/image_folder/pick?start=${encodeURIComponent(String(start ?? ""))}`);
-  } catch {
-    throw new Error("连不上 ComfyUI 后端，文件夹对话框打不开。");
-  }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(String(data?.error ?? "打不开文件夹对话框。").replace(/^(Image Folder|批量加载图片)[:：]\s*/, ""));
-  }
-  return String(data?.folder ?? "");
-}
-
-async function chooseFolder(node, button) {
-  const widget = node.widgets?.find((entry) => entry?.name === "folder");
-  if (!widget) return;
-  const text = button?.textContent;
-  if (button) {
-    button.disabled = true;
-    button.textContent = "正在打开…";
-  }
-  try {
-    const folder = await openFolderDialog(String(widget.value ?? ""));
-    if (folder && folder !== widget.value) {
-      commitWidgetValue(node, widget, folder, app.canvas);
-      notifyZzmChange();
-    }
-  } catch (error) {
-    showToast({ severity: "warn", detail: String(error?.message ?? error) || "打不开文件夹对话框。" });
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = text;
-    }
-  }
-}
-
 const CARDS = {
   ZZM_NODES_ImageResize: {
     minWidth: 300,
@@ -255,11 +212,15 @@ const CARDS = {
   ZZM_NODES_ImageFolder: {
     minWidth: 340, first: true, hide: ["pictures"], socketless: ["pictures"],
     rows: [
-      { widget: "folder", label: "文件夹", placeholder: "点右边按钮选，或粘路径",
-        title: "图片所在的文件夹，完整路径。点右边的按钮用系统对话框选，也可以把路径直接粘进来。图片就地读取，不复制。",
-        button: { text: "📂 打开文件夹", primary: true, width: 118,
-          title: "打开这台电脑的文件夹对话框，直接读那个文件夹里的图片：不复制、不搬动，不经过 ComfyUI 的输入目录。",
-          onClick: (node, _state, button) => chooseFolder(node, button) } },
+      { widget: "folder", full: true, placeholder: "选文件夹，或把完整路径粘进来",
+        title: "图片所在的文件夹，完整路径。左边是地址栏（可以直接粘路径），右边用系统的文件夹选择框挑一个。",
+        button: { text: "打开文件夹", primary: true, width: 84,
+          title: "用系统的文件夹选择框挑一个文件夹。",
+          onClick: (node) => {
+            const state = node.__zzmausImageFolder;
+            if (state?.pick) state.pick();
+            else showToast({ severity: "warn", detail: "缩略图面板没挂上，按 F12 看看控制台里的报错。" });
+          } } },
       { widget: "subfolders", label: "含子文件夹", offText: "否", onText: "是" },
       { widget: "sort", label: "排序", kind: "select" },
       { widget: "run", label: "运行", kind: "segment" },

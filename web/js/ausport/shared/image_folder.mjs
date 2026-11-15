@@ -2,11 +2,11 @@
 // picked, what the count line says, which picture the next run loads, and
 // the addresses the panel asks the server at.
 //
-import { api } from "/scripts/api.js";
-
 // "picked" is null when every picture is picked (the widget then holds an
 // empty text, and a picture added to the folder later is in too), or the
 // list of picked names.
+
+import { api } from "/scripts/api.js";
 
 // The widget's text as a pick. Anything unreadable counts as "every picture":
 // the node itself refuses a damaged list with a message when it runs.
@@ -74,14 +74,14 @@ export function summary(picked, names) {
   return { count, total, text: `${count} of ${total} picked` };
 }
 
-// 从头再来, and the 重头再来 a workflow saved before the rename carries.
-export function startsOver(atTheEnd) {
-  return atTheEnd === "从头再来" || atTheEnd === "重头再来";
-}
-
 // A picture's number among the picked ones, from 1. 0 when it is not picked.
 export function placeOf(picked, names, name) {
   return pickedNames(picked, names).indexOf(name) + 1;
+}
+
+// 从头再来, and the 重头再来 a workflow saved before the rename carries.
+export function startsOver(atTheEnd) {
+  return atTheEnd === "从头再来" || atTheEnd === "重头再来";
 }
 
 // The picture the next "每次一张" run loads, or null when Picture is past
@@ -138,43 +138,25 @@ export function thumbAddress({ folder, name, v, size = 160 }) {
   return `/zzmaus/image_folder/thumb?${query({ folder, name, size, v })}`;
 }
 
-// The system's folder dialog, opened by the server on this machine.
-export function pickAddress({ start } = {}) {
-  return `/zzmaus/image_folder/pick?${query({ start })}`;
-}
-
-// The folder a person picks, as a whole path; "" when they call it off. The
-// request waits while the dialog is open, so the caller shows that a press did
-// something before awaiting it.
-export async function askForFolder(start = "") {
-  let response;
-  try {
-    response = await api.fetchApi(pickAddress({ start }));
-  } catch {
-    throw new Error("连不上 ComfyUI 后端，文件夹对话框打不开。");
-  }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(String(data?.error ?? "打不开文件夹对话框。").replace(/^(Image Folder|批量加载图片)[:：]\s*/, ""));
-  }
-  return String(data?.folder ?? "");
-}
-
-// A whole path (a drop, a paste) as the folder it sits in plus the name.
+// The folder a whole path sits in (a dropped file, a pasted one).
 export function resolveAddress(path) {
   return `/zzmaus/image_folder/resolve?${query({ path })}`;
 }
 
-// A file or folder copied in Explorer: the one way a page can name a real path.
-export function clipboardAddress() {
-  return "/zzmaus/image_folder/clipboard";
-}
+// Where ComfyUI keeps its own folders. A picture added by hand or dropped on the
+// node lands in the temp one: a browser can only hand the server a copy of a
+// file, and a picture picked from disk does not belong in the input folder.
+let foldersPromise = null;
 
-export async function askClipboard() {
-  const response = await api.fetchApi(clipboardAddress());
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data?.folder) {
-    throw new Error(String(data?.error ?? "剪贴板里没有文件。").replace(/^(Image Folder|批量加载图片)[:：]\s*/, ""));
+export function comfyFolders() {
+  if (!foldersPromise) {
+    foldersPromise = api.fetchApi("/zzmaus/image_folder/where")
+      .then((response) => (response.ok ? response.json() : {}))
+      .then((data) => ({
+        temp: String(data?.temp ?? "").replace(/\\/g, "/"),
+        input: String(data?.input ?? "").replace(/\\/g, "/"),
+      }))
+      .catch(() => ({ temp: "", input: "" }));
   }
-  return { folder: String(data.folder), name: String(data.name ?? "") };
+  return foldersPromise;
 }

@@ -4,10 +4,6 @@ and run the workflow on each one."""
 from __future__ import annotations
 
 import asyncio
-import os
-import subprocess
-import tempfile
-import threading
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -15,10 +11,8 @@ from ._execution_helpers import ignore_extra_inputs
 from ._image_folder_helpers import (
     AFTER_RUN,
     AT_THE_END,
-    DIALOG_BUSY,
     IMAGE_EXTENSIONS,
     MAX_PICTURES,
-    NO_DIALOG,
     NO_PICTURES,
     NOT_CHOSEN,
     RUNS,
@@ -38,126 +32,21 @@ from ._image_folder_helpers import (
 # What the frontend reads to show "7 of 42" on the node after a run.
 UI_KEY = "zzmaus_image_folder"
 
-# Windows' own folder dialog, so the node reads the pictures where they are.
-# It runs as its own process: a dialog needs a message loop, and ComfyUI's
-# loop has work to do while the person navigates.
-#
-# The dialog is given a small always-on-top owner window instead of the
-# desktop. Without one it opens wherever Windows feels like - often behind the
-# browser - and it is modal to the desktop, so every click and every drop on
-# the machine goes to a dialog nobody can see. With the owner it opens in
-# front, and the owner says what is being waited for.
-_DIALOG = r"""
-param([string]$Out, [string]$Start)
-$ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-$owner = $null
-$shell = $null
-try {
-  $owner = New-Object System.Windows.Forms.Form
-  $owner.Text = '选择图片所在的文件夹'
-  $owner.TopMost = $true
-  $owner.ShowInTaskbar = $true
-  $owner.FormBorderStyle = [System.Windows.Forms.FormBorderStyle]::FixedToolWindow
-  $owner.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
-  $owner.ClientSize = New-Object System.Drawing.Size(320, 64)
-  $label = New-Object System.Windows.Forms.Label
-  $label.Text = '正在打开文件夹对话框…'
-  $label.Dock = [System.Windows.Forms.DockStyle]::Fill
-  $label.TextAlign = [System.Drawing.ContentAlignment]::MiddleCenter
-  $owner.Controls.Add($label)
-  $owner.Show()
-  $owner.Activate()
-  [void][System.Windows.Forms.Application]::DoEvents()
-
-  $shell = New-Object -ComObject Shell.Application
-  # RETURNONLYFSDIRS | EDITBOX | NEWDIALOGSTYLE: real folders, a box to type a
-  # path in, and the resizable dialog.
-  $flags = 0x1 -bor 0x10 -bor 0x40
-  $root = 0
-  if ($Start -and (Test-Path -LiteralPath $Start -PathType Container)) { $root = $Start }
-  $picked = $shell.BrowseForFolder($owner.Handle, '选择图片所在的文件夹', $flags, $root)
-  if ($null -ne $picked) {
-    $text = ''
-    try { $text = $picked.Self.Path } catch { $text = '' }
-    if ($text) {
-      [System.IO.File]::WriteAllText($Out, $text, (New-Object System.Text.UTF8Encoding($false)))
-    }
-  }
-} catch {
-  Write-Error $_.Exception.Message
-  exit 1
-} finally {
-  if ($shell) { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
-  if ($owner) { $owner.Close(); $owner.Dispose() }
-}
-"""
-
-_DIALOG_LOCK = threading.Lock()
-
-# The file list on the clipboard: a picture or a folder copied in Explorer.
-# This is the one way a browser page can name a real path, since a drop
-# carries none.
-_CLIPBOARD = r"""
-param([string]$Out)
-$ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName System.Windows.Forms
-$list = [System.Windows.Forms.Clipboard]::GetFileDropList()
-if ($null -ne $list -and $list.Count -gt 0) {
-  $first = $list[0]
-  if ($first) {
-    [System.IO.File]::WriteAllText($Out, [string]$first, (New-Object System.Text.UTF8Encoding($false)))
-  }
-}
-"""
+try:                                  # offline tests run without ComfyUI
+    import folder_paths
+except ImportError:                   # pragma: no cover
+    folder_paths = None
 
 
-def run_powershell(script: str, args: dict, timeout: int = 60) -> str:
-    """Run a PowerShell script in its own process and read what it wrote to
-    the output file. "" when it wrote nothing (the person called it off)."""
-    if os.name != "nt":
-        raise RuntimeError(NO_DIALOG)
-    with tempfile.TemporaryDirectory(prefix="zzmaus-pick-") as work:
-        script_file = Path(work) / "task.ps1"
-        out_file = Path(work) / "out.txt"
-        script_file.write_text(script, encoding="utf-8-sig")
-        command = [
-            "powershell.exe", "-NoProfile", "-STA", "-ExecutionPolicy", "Bypass",
-            "-File", str(script_file), "-Out", str(out_file),
-        ]
-        for name, value in args.items():
-            command += [f"-{name}", str(value)]
-        try:
-            subprocess.run(
-                command, capture_output=True, timeout=timeout, check=False,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-            )
-        except subprocess.TimeoutExpired:
-            raise RuntimeError(NO_DIALOG) from None
-        if not out_file.is_file():
-            return ""
-        return out_file.read_text(encoding="utf-8-sig").strip()
-
-
-def ask_for_folder(start: str = "") -> str:
-    """The folder a person picks in the system's folder dialog, or "" when
-    they call it off. One dialog at a time: a second press is told the first
-    one is open rather than stacking windows."""
-    if os.name != "nt":
-        raise RuntimeError(NO_DIALOG)
-    if not _DIALOG_LOCK.acquire(blocking=False):
-        raise RuntimeError(DIALOG_BUSY)
+def _own_folder(getter: str) -> str:
+    """ComfyUI's own folder, as a whole path. Pictures added by hand or dropped
+    on the node land in temp, so the node can go and read them there."""
+    if folder_paths is None:
+        return ""
     try:
-        return run_powershell(_DIALOG, {"Start": start or ""}, timeout=900)
-    finally:
-        _DIALOG_LOCK.release()
-
-
-def clipboard_path() -> str:
-    """The file or folder on the clipboard, as a whole path. "" when the
-    clipboard holds no file."""
-    return run_powershell(_CLIPBOARD, {}, timeout=60)
+        return str(Path(getattr(folder_paths, getter)()).resolve())
+    except Exception:                 # a core that renamed the getter
+        return ""
 
 
 def place_of(text: str) -> tuple[str, str]:
@@ -193,7 +82,7 @@ def _picked(folder, subfolders, sort, pictures) -> list[dict]:
 
 def _register_routes() -> None:
     """The gallery's questions: which pictures a folder holds, a small copy of
-    one, which folder the person picked, and where a whole path leads.
+    one, where ComfyUI keeps its own folders, and where a whole path leads.
 
     The folder is the person's own machine, so the routes read it: a picture
     name is only ever resolved below the folder it came with."""
@@ -218,6 +107,17 @@ def _register_routes() -> None:
 
     async def off_loop(work, *args):
         return await asyncio.get_running_loop().run_in_executor(None, work, *args)
+
+    @routes.get("/zzmaus/image_folder/where")
+    async def where(request):
+        """ComfyUI's own folders. The panel adds pictures to temp: a browser can
+        only hand the server a copy, and the input folder is not where a picture
+        picked from disk belongs."""
+        return web.json_response({
+            "temp": _own_folder("get_temp_directory"),
+            "input": _own_folder("get_input_directory"),
+            "output": _own_folder("get_output_directory"),
+        })
 
     @routes.get("/zzmaus/image_folder/list")
     async def pictures(request):
@@ -251,38 +151,12 @@ def _register_routes() -> None:
             return web.json_response({"error": "这张图打不开"}, status=415)
         return web.Response(body=data, content_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
-    @routes.get("/zzmaus/image_folder/pick")
-    async def pick(request):
-        try:
-            folder = await off_loop(ask_for_folder, query(request, "start"))
-        except RuntimeError as error:
-            return refused(error)
-        return web.json_response({"folder": folder})
-
     @routes.get("/zzmaus/image_folder/resolve")
     async def resolve(request):
         """A whole path, from a drop or a paste: the folder it sits in, and
         the picture's name when it is a picture."""
         try:
             folder, name = place_of(query(request, "path"))
-        except ValueError as error:
-            return refused(error)
-        return web.json_response({"folder": folder, "name": name})
-
-    @routes.get("/zzmaus/image_folder/clipboard")
-    async def clipboard(request):
-        """A file or folder copied in Explorer. The only way a page can name a
-        real path on this machine, since a drop carries none."""
-        try:
-            copied = await off_loop(clipboard_path)
-        except RuntimeError as error:
-            return refused(error)
-        if not copied:
-            return web.json_response(
-                {"error": "剪贴板里没有文件。在资源管理器里选中图片或文件夹，Ctrl+C，再点这里。"}, status=400
-            )
-        try:
-            folder, name = place_of(copied)
         except ValueError as error:
             return refused(error)
         return web.json_response({"folder": folder, "name": name})
@@ -295,7 +169,9 @@ class ZZMImageFolder:
     CATEGORY = "⚡ zzm工具箱"
     DESCRIPTION = (
         "打开这台电脑上的任意文件夹，勾上要的图片，让工作流一张张跑完。\n"
-        "· 图片就地读取，不复制、不搬动，ComfyUI 的输入目录不参与\n"
+        "· 文件夹填完整路径，或者用卡片上的「打开文件夹」—— 那是系统的文件夹选择框\n"
+        "· 手选的图片、拖进节点的图片、整个文件夹，都放进 ComfyUI 的临时文件夹（temp/zzm_drop），\n"
+        "  节点随后切过去并勾好；输入目录不动\n"
         "· 每次一张：每次运行只加载一张，跑完自动往后走，某张失败只跳过它自己\n"
         "· 一次全部：点一次运行，勾选的每张图各跑一遍\n"
         "· 同时给出每张的遮罩、文件名（接「保存图片」可沿用原名）、序号和总数\n"
@@ -316,7 +192,7 @@ class ZZMImageFolder:
                     {
                         "default": "",
                         "multiline": False,
-                        "tooltip": "图片所在的文件夹，完整路径。点卡片上的「打开文件夹」从这台电脑上选，也可以直接粘贴路径。",
+                        "tooltip": "图片所在的文件夹，完整路径。点「打开文件夹」用系统的选择框挑，也可以直接粘路径。",
                     },
                 ),
                 "subfolders": (

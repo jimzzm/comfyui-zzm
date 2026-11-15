@@ -44,8 +44,6 @@ NONE_LEFT = "批量加载图片：选中的图片都不在文件夹里了。在�
 NONE_PICKED = "批量加载图片：一张都没勾。在节点上勾至少一张，或者点「全选」。"
 BAD_PICKS = "批量加载图片：选中列表读不出来。在节点上重新勾一次。"
 THE_END = "批量加载图片：已经是最后一张（共 {count} 张）。把「当前位置」改回 1 就从头再来。"
-DIALOG_BUSY = "批量加载图片：已经有一个文件夹对话框开着了（看屏幕中间或任务栏），先把它选完或取消。"
-NO_DIALOG = "批量加载图片：这台机器上弹不出文件夹对话框，请把完整路径粘进「文件夹」栏。"
 
 # Values a workflow saved by an older release still carries.
 _ONE_PER_RUN = ("每次一张", "one per run")
@@ -293,12 +291,10 @@ __all__ = [
     "AFTER_RUN",
     "AT_THE_END",
     "BAD_PICKS",
-    "DIALOG_BUSY",
     "IMAGE_EXTENSIONS",
     "MAX_PICTURES",
     "NONE_LEFT",
     "NONE_PICKED",
-    "NO_DIALOG",
     "NO_FOLDER",
     "NO_MASK_SIZE",
     "NO_PICTURES",

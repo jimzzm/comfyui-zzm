@@ -54,7 +54,7 @@ function ensureCss() {
 .zzmaus-save-preview .name{color:var(--zzm-text,#edeef0);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .zzmaus-save-preview.saved .name{color:${BRAND}}
 .zzmaus-save-chips{display:flex;flex-wrap:wrap;gap:5px;flex:none;pointer-events:auto}
-.zzmaus-save-chip{height:22px;padding:0 9px;border:1px solid var(--zzm-line,#43484e);border-radius:6px;background:transparent;color:var(--zzm-dim,#b0b4ba);font:600 11.5px/1 ${FONT};cursor:pointer;white-space:nowrap}
+.zzmaus-save-chip{height:22px;padding:0 9px;border:1px solid var(--zzm-line,#43484e);border-radius:6px;background:transparent;color:var(--zzm-dim,#b0b4ba);font:400 11.5px/1 ${FONT};cursor:pointer;white-space:nowrap}
 .zzmaus-save-chip:hover{color:var(--zzm-text,#edeef0);border-color:${BRAND}}
 .zzmaus-save-chip.on{background:${BRAND};border-color:${BRAND};color:#fff}
 .zzmaus-save-chips.off .zzmaus-save-chip{opacity:.4;pointer-events:none}
@@ -63,7 +63,7 @@ function ensureCss() {
 .zzmaus-save-browse-head{padding:5px 8px 6px;border-bottom:1px solid var(--zzm-chip-bg,#2e3135);color:var(--zzm-dim,#b0b4ba);font:11px/1 ${FONT};letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .zzmaus-save-browse button{display:block;width:100%;padding:6px 8px;border:none;border-radius:5px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .zzmaus-save-browse button:hover{background:var(--zzm-line-soft,#363a3f)}
-.zzmaus-save-browse button.use{color:${BRAND};font-weight:600}
+.zzmaus-save-browse button.use{color:${BRAND}}
 `;
   document.head.append(style);
 }

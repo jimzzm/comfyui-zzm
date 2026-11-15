@@ -75,7 +75,7 @@ function ensureCss() {
   style.textContent = `
 .zzmaus-if{box-sizing:border-box;overflow:hidden;position:relative;display:flex;flex-direction:column;gap:6px;width:100%;height:100%;padding:2px 6px 6px;color:var(--zzm-text,#edeef0);font:11.5px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;}
 .zzmaus-if-bar{flex:none;display:flex;align-items:center;gap:6px;height:26px;}
-.zzmaus-if-chip{box-sizing:border-box;height:26px;padding:0 10px;border:1px solid rgba(192,92,67,.5);border-radius:10px;background:rgba(192,92,67,.14);color:${BRAND};font:600 11.5px/24px "Segoe UI",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+.zzmaus-if-chip{box-sizing:border-box;height:26px;padding:0 10px;border:1px solid rgba(192,92,67,.5);border-radius:10px;background:rgba(192,92,67,.14);color:${BRAND};font:400 11.5px/24px "Segoe UI",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .zzmaus-if-chip.warn{border-color:var(--zzm-warn,#ffca16);background:rgba(201,138,43,.16);color:var(--zzm-warn,#ffca16);}
 .zzmaus-if-gap{flex:1 1 auto;}
 /* 正常字重：600 在中文里会被浏览器合成加粗，看着发糊。 */
@@ -113,7 +113,7 @@ function ensureCss() {
 .zzmaus-if-cover[hidden]{display:none;}
 .zzmaus-if-cover b{color:var(--zzm-text,#edeef0);font-size:12.5px;}
 .zzmaus-if-note{grid-column:1/-1;align-self:center;padding:22px 12px;color:var(--zzm-dim,#b0b4ba);font-size:11.5px;line-height:1.45;text-align:center;white-space:pre-line;}
-.zzmaus-if-more{grid-column:1/-1;height:24px;border:1px dashed var(--zzm-line-soft,#363a3f);border-radius:5px;background:transparent;color:var(--zzm-dim,#b0b4ba);font:600 11.5px/22px "Segoe UI",sans-serif;cursor:pointer;}
+.zzmaus-if-more{grid-column:1/-1;height:24px;border:1px dashed var(--zzm-line-soft,#363a3f);border-radius:5px;background:transparent;color:var(--zzm-dim,#b0b4ba);font:400 11.5px/22px "Segoe UI",sans-serif;cursor:pointer;}
 .zzmaus-if-more:hover{color:var(--zzm-text,#edeef0);border-color:${BRAND};}
 .zzmaus-if-view{position:fixed;z-index:10000;display:none;box-sizing:border-box;padding:3px;border:1px solid rgba(192,92,67,.65);border-radius:6px;background:var(--zzm-view,#18191b);box-shadow:0 14px 36px rgba(0,0,0,.6);pointer-events:none;}
 .zzmaus-if-view.on{display:block;}
@@ -796,7 +796,6 @@ function buildPanel(node) {
     for (const [name, pictures] of groups) await copyFolder(state, name, pictures);
   }, { signal });
 
-  state.pick = () => chooseFolder(state);
   state.refresh = () => refresh(state);
   watchPointer(state);
   // Where ComfyUI's input folder is: pictures added or dropped land there.

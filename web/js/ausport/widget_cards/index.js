@@ -6,7 +6,7 @@
 // and a `group` row folds the rarely-touched settings behind one click.
 import { api } from "/scripts/api.js";
 import { app } from "/scripts/app.js";
-import { chainCallback, notifyZzmChange, showToast } from "../shared/index.mjs";
+import { chainCallback, notifyZzmChange } from "../shared/index.mjs";
 import { formatWidgetVisibility } from "../shared/save_video_formats.mjs";
 import { hideInputsInDef } from "../shared/widget_visibility.mjs";
 import { castChips } from "../shared/h3_cast_chips.mjs";
@@ -207,20 +207,13 @@ const CARDS = {
   // the card and owns the hidden `pictures` widget. The ticks on the gallery
   // write it, so it takes no link: a second text link would land there once
   // Folder is wired.
-  // 文件夹是这台电脑上的完整路径：那一行的按钮就是这张卡的主要按键，用系统自己的
-  // 对话框选，选完图片就地读取、不复制。来源（输入/输出目录）那一行没有了。
+  // 文件夹是这台电脑上的完整路径，这一行只负责「读哪里」：粘路径，就地读取。
+  // 往里加图片是另一回事，归下面的「添加」（图片… / 整个文件夹…），别混在一行。
   ZZM_NODES_ImageFolder: {
     minWidth: 340, first: true, hide: ["pictures"], socketless: ["pictures"],
     rows: [
-      { widget: "folder", full: true, placeholder: "选文件夹，或把完整路径粘进来",
-        title: "图片所在的文件夹，完整路径。左边是地址栏（可以直接粘路径），右边用系统的文件夹选择框挑一个。",
-        button: { text: "打开文件夹", primary: true, width: 84,
-          title: "用系统的文件夹选择框挑一个文件夹。",
-          onClick: (node) => {
-            const state = node.__zzmausImageFolder;
-            if (state?.pick) state.pick();
-            else showToast({ severity: "warn", detail: "缩略图面板没挂上，按 F12 看看控制台里的报错。" });
-          } } },
+      { widget: "folder", label: "文件夹路径", placeholder: "完整路径，例如 D:////图片////待处理",
+        title: "图片所在文件夹在这台电脑上的完整路径。直接粘进来，图片就地读取、一张也不复制。要往里加图片，用下面的「添加」。" },
       { widget: "subfolders", label: "含子文件夹", offText: "否", onText: "是" },
       { widget: "sort", label: "排序", kind: "select" },
       { widget: "run", label: "运行", kind: "segment" },

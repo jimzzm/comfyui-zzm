@@ -3,9 +3,9 @@
 // dashed chip, so it reads as optional. The widgets underneath stay the
 // source of truth: a chip only changes their value.
 import { app } from "/scripts/app.js";
-import { BRAND, chainCallback } from "./index.mjs";
-import { liftSocket } from "./widget_card.mjs";
-import { commitWidgetValue, comboValues } from "./widget_card_math.mjs";
+import { BRAND, chainCallback } from "./index.mjs?v=20261116";
+import { liftSocket } from "./widget_card.mjs?v=20261116";
+import { commitWidgetValue, comboValues } from "./widget_card_math.mjs?v=20261116";
 
 const CSS_ID = "zzmaus-cast-chips-css";
 const WATCH = 1000; // Workflow Switches can turn a loader off without touching this node.

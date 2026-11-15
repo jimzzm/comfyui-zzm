@@ -1,21 +1,21 @@
 import { api } from "/scripts/api.js";
 import { app } from "/scripts/app.js";
-import { BRAND, chainCallback, keepDomWidgetWidthAuto, notifyZzmChange, showToast } from "../shared/index.mjs";
-import { WIDGET_FRAME, fillNodeHeight, holdVueNodeMinWidth } from "../shared/panel_layout.mjs";
-import { hideInputsInDef, hideWidget as collapseWidget } from "../shared/widget_visibility.mjs";
+import { BRAND, chainCallback, keepDomWidgetWidthAuto, notifyZzmChange, showToast } from "../shared/index.mjs?v=20261116";
+import { WIDGET_FRAME, fillNodeHeight, holdVueNodeMinWidth } from "../shared/panel_layout.mjs?v=20261116";
+import { hideInputsInDef, hideWidget as collapseWidget } from "../shared/widget_visibility.mjs?v=20261116";
 import {
   closeSettingsMenu,
   gearIconSvg,
   loadSettings,
   openSettingsMenu,
-} from "../shared/settings_menu.mjs";
-import { makeScrubInput } from "../shared/scrub_input.mjs";
-import { isAppShortcut, keepKeyInField } from "../shared/canvas_passthrough.mjs";
-import { resetUnknownValues } from "../shared/widget_card_math.mjs";
-import { boxRowInputs, boxRowsWidget, boxesOf, hostBox, rowsInputName, workflowNodes } from "../shared/lora_box.mjs";
+} from "../shared/settings_menu.mjs?v=20261116";
+import { makeScrubInput } from "../shared/scrub_input.mjs?v=20261116";
+import { isAppShortcut, keepKeyInField } from "../shared/canvas_passthrough.mjs?v=20261116";
+import { resetUnknownValues } from "../shared/widget_card_math.mjs?v=20261116";
+import { boxRowInputs, boxRowsWidget, boxesOf, hostBox, rowsInputName, workflowNodes } from "../shared/lora_box.mjs?v=20261116";
 import {
   SETTINGS_PROPERTY as SWITCHES_PROPERTY, releaseStackGroup, releaseStackRow, renameStackGroup, stackGroupOwners, stackRowOwners,
-} from "../shared/workflow_switches.mjs";
+} from "../shared/workflow_switches.mjs?v=20261116";
 import {
   BYPASS_MODE,
   DEFAULT_STEP,
@@ -81,11 +81,11 @@ import {
   ungroupRows,
   uniqueGroupName,
   upsertTemplate,
-} from "../shared/lora_stack.mjs";
+} from "../shared/lora_stack.mjs?v=20261116";
 import {
   MAX_PICTURE_BYTES, civitaiButtonLabel, civitaiByHashUrl, civitaiFailureText, isCivitaiAddress,
   parseCivitaiBody, pickCivitaiPicture, smallPictureUrl,
-} from "../shared/civitai_lookup.mjs";
+} from "../shared/civitai_lookup.mjs?v=20261116";
 
 const NODE_CLASS = "ZZM_NODES_LoraLoader";
 // A workflow saved by a 1.x release holds the panel's own empty value where

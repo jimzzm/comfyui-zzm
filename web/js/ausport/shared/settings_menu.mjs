@@ -8,9 +8,9 @@
 //                        title: "LoRA 加载器设置",
 //                        onChange: (values, key) => rerender(values) });
 
-import { makeScrubInput } from "./scrub_input.mjs";
-import { BRAND } from "./index.mjs";
-import { isAppShortcut, keepKeyInField } from "./canvas_passthrough.mjs";
+import { makeScrubInput } from "./scrub_input.mjs?v=20261116";
+import { BRAND } from "./index.mjs?v=20261116";
+import { isAppShortcut, keepKeyInField } from "./canvas_passthrough.mjs?v=20261116";
 import {
   isOverrideActive,
   isOverrideEntry,
@@ -18,7 +18,7 @@ import {
   overrideEnableValue,
   overrideIsCustom,
   schemaDefaults,
-} from "./node_settings.mjs";
+} from "./node_settings.mjs?v=20261116";
 
 const CSS_ID = "zzmaus-settings-css";
 

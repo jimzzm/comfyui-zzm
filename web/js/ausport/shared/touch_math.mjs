@@ -9,7 +9,7 @@
 // is picked stays on/off until a brush with a soft edge has painted on it;
 // from then on it is a Float32Array too.
 
-import { brushCore, brushSigma } from "./brush.mjs";
+import { brushCore, brushSigma } from "./brush.mjs?v=20261116";
 
 // The same caps the server puts on the touches it reads.
 export const TOUCH_MAX_CHARS = 400000;

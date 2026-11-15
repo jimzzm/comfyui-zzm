@@ -19,10 +19,10 @@
 
 import { api } from "/scripts/api.js";
 import { app } from "/scripts/app.js";
-import { BRAND, chainCallback, chainHandler, keepDomWidgetWidthAuto, notifyZzmChange, showToast } from "../shared/index.mjs";
-import { fillNodeHeight } from "../shared/panel_layout.mjs";
-import { isForeignRun } from "../shared/prompt_scope.mjs";
-import { commitWidgetValue } from "../shared/widget_card_math.mjs";
+import { BRAND, chainCallback, chainHandler, keepDomWidgetWidthAuto, notifyZzmChange, showToast } from "../shared/index.mjs?v=20261116";
+import { fillNodeHeight } from "../shared/panel_layout.mjs?v=20261116";
+import { isForeignRun } from "../shared/prompt_scope.mjs?v=20261116";
+import { commitWidgetValue } from "../shared/widget_card_math.mjs?v=20261116";
 import {
   comfyFolders,
   countLine,
@@ -37,7 +37,7 @@ import {
   serializePicked,
   thumbAddress,
   togglePick,
-} from "../shared/image_folder.mjs";
+} from "../shared/image_folder.mjs?v=20261116";
 
 const NODE_CLASS = "ZZM_NODES_ImageFolder";
 const PANEL = "zzmaus_image_folder_panel";
@@ -949,6 +949,10 @@ function mountPanel(node) {
     return null;
   }
 }
+
+// A line in the console, so a page that loaded this file can be told apart
+// from one still running a copy from before it existed.
+console.info("[ZZM] 批量加载图片：面板代码已加载");
 
 app.registerExtension({
   name: "zzmaus.image_folder",

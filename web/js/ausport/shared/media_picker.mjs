@@ -10,9 +10,9 @@
 // options when it opens and hands the chosen value back through onChange.
 // Pure decisions live in media_list.mjs for node:test; this file is the DOM.
 
-import { BRAND } from "./index.mjs";
-import { isAppShortcut, keepKeyInField } from "./canvas_passthrough.mjs";
-import { filterMedia, mediaLabel, moveHighlight } from "./media_list.mjs";
+import { BRAND } from "./index.mjs?v=20261116";
+import { isAppShortcut, keepKeyInField } from "./canvas_passthrough.mjs?v=20261116";
+import { filterMedia, mediaLabel, moveHighlight } from "./media_list.mjs?v=20261116";
 
 const CSS_ID = "zzmaus-media-picker-css";
 const LIST_CAP = 400; // a crowded input folder shows this many; typing narrows it

@@ -7,7 +7,7 @@
 // copy and the caret are the browser's own. A copy of the text sits under it
 // with the colours. Only colours and backgrounds change, never the font or
 // the spacing, so both lay out the same lines.
-import { scriptMarkup } from "./script_colours_math.mjs";
+import { scriptMarkup } from "./script_colours_math.mjs?v=20261116";
 
 const CSS_ID = "zzmaus-script-colours-css";
 

@@ -8,7 +8,7 @@ import { app } from "/scripts/app.js";
 import {
   injectTheme, el, label, btn, chip, seg, applyThemeVars, onThemeChange,
   hideWidgets, keepWidthAuto, markChanged,
-} from "./zzm_theme.mjs";
+} from "./zzm_theme.mjs?v=20261116";
 
 const MODE_AUTO = "自动（空行优先，无空行按换行）";
 const MODE_BLANK = "空行分段";

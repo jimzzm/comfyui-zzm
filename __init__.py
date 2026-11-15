@@ -22,6 +22,8 @@ zzm 工具箱 — ComfyUI 自定义节点合集
 也会被截断（那个徽标显示的就是 RELATIVE_PYTHON_MODULE 里的目录名）。
 """
 
+import pathlib
+
 # Register web extension directory for frontend JS
 WEB_DIRECTORY = "./web"
 
@@ -51,6 +53,19 @@ def _no_store_assets() -> None:
         path = str(request.path)
         if path == "/extensions" or path.startswith("/extensions/comfyui-zzm/"):
             response.headers["Cache-Control"] = "no-store"
+            # A line per request, so a page that loads the wrong file can be
+            # traced from the server side. Small, and only this pack's paths.
+            try:
+                import datetime
+                import tempfile
+                log = pathlib.Path(tempfile.gettempdir()) / "zzmaus_access.log"
+                if log.exists() and log.stat().st_size > 1_000_000:
+                    log.unlink()                 # start over rather than grow forever
+                with open(log, "a", encoding="utf-8") as handle:
+                    handle.write(f"{datetime.datetime.now():%H:%M:%S} "
+                                 f"{response.status} {path}\n")
+            except Exception:
+                pass
 
     server.app.on_response_prepare.append(no_store)
 

@@ -30,20 +30,20 @@
 // Pure decisions (which rows show, how tall the card is, how a number
 // scrubs, where a socket sits) live in widget_card_math.mjs for node:test;
 // this file is the DOM.
-import { BRAND, chainCallback, keepDomWidgetWidthAuto, notifyZzmChange } from "./index.mjs";
-import { keepKeyInField } from "./canvas_passthrough.mjs";
-import { createMediaPicker } from "./media_picker.mjs";
-import { ensureNodeMinHeight, fillNodeHeight, holdNodeMinWidth, nodeHeightAfterCardChange, pinVuePanelHeight } from "./panel_layout.mjs";
-import { makeScrubInput, quantizeScrubValue, stepDecimals } from "./scrub_input.mjs";
-import { limitsLabel, narrowedRange } from "./wired_limits.mjs";
-import { hideWidget } from "./widget_visibility.mjs";
+import { BRAND, chainCallback, keepDomWidgetWidthAuto, notifyZzmChange } from "./index.mjs?v=20261116";
+import { keepKeyInField } from "./canvas_passthrough.mjs?v=20261116";
+import { createMediaPicker } from "./media_picker.mjs?v=20261116";
+import { ensureNodeMinHeight, fillNodeHeight, holdNodeMinWidth, nodeHeightAfterCardChange, pinVuePanelHeight } from "./panel_layout.mjs?v=20261116";
+import { makeScrubInput, quantizeScrubValue, stepDecimals } from "./scrub_input.mjs?v=20261116";
+import { limitsLabel, narrowedRange } from "./wired_limits.mjs?v=20261116";
+import { hideWidget } from "./widget_visibility.mjs?v=20261116";
 import {
   CARD_PADDING, GROUP_HEIGHT, ROW_GAP, ROW_HEIGHT, SECTION_HEIGHT, SLOT_OFFSET, UNIT_SLOT_WIDTH,
   cardChangeRestore, cardHeight, choiceLabel, commitWidgetValue, comboValues, rowHeight, rowInLook, rowKind, rowMuted, rowTops, scrubSteps, socketWidgetY, visibleRows,
   widgetTooltip,
-} from "./widget_card_math.mjs";
+} from "./widget_card_math.mjs?v=20261116";
 
-export * from "./widget_card_math.mjs";
+export * from "./widget_card_math.mjs?v=20261116";
 
 const CSS_ID = "zzmaus-widget-card-css";
 export const CARD_WIDGET = "zzmaus_widget_card";

@@ -6,19 +6,19 @@
 // and a `group` row folds the rarely-touched settings behind one click.
 import { api } from "/scripts/api.js";
 import { app } from "/scripts/app.js";
-import { chainCallback, notifyZzmChange } from "../shared/index.mjs";
-import { formatWidgetVisibility } from "../shared/save_video_formats.mjs";
-import { hideInputsInDef } from "../shared/widget_visibility.mjs";
-import { castChips } from "../shared/h3_cast_chips.mjs";
-import { momentStrip } from "../shared/moment_strip.mjs";
-import { mountWidgetCard } from "../shared/widget_card.mjs";
-import { SOCKETLESS_CHOICE, SOCKETLESS_TEXT, commitWidgetValue, markSocketless, resetUnknownValues } from "../shared/widget_card_math.mjs";
-import { mediaViewQuery } from "../shared/media_list.mjs";
-import { gearIconSvg, openSettingsMenu } from "../shared/settings_menu.mjs";
-import { SEAM_MENU, SEAM_MUTE_TITLES, isBlendIn, seamCornerReserve } from "../shared/stitch_seam.mjs";
-import { NUMBER_LOOK_MENU, TEXT_LOOK_MENU, setTextLook, textLook, textLookCornerReserve } from "../shared/text_look.mjs";
-import { fineEdgeLabel } from "../shared/touch_math.mjs";
-import { valueToTake, wiredLimits } from "../shared/wired_limits.mjs";
+import { chainCallback, notifyZzmChange } from "../shared/index.mjs?v=20261116";
+import { formatWidgetVisibility } from "../shared/save_video_formats.mjs?v=20261116";
+import { hideInputsInDef } from "../shared/widget_visibility.mjs?v=20261116";
+import { castChips } from "../shared/h3_cast_chips.mjs?v=20261116";
+import { momentStrip } from "../shared/moment_strip.mjs?v=20261116";
+import { mountWidgetCard } from "../shared/widget_card.mjs?v=20261116";
+import { SOCKETLESS_CHOICE, SOCKETLESS_TEXT, commitWidgetValue, markSocketless, resetUnknownValues } from "../shared/widget_card_math.mjs?v=20261116";
+import { mediaViewQuery } from "../shared/media_list.mjs?v=20261116";
+import { gearIconSvg, openSettingsMenu } from "../shared/settings_menu.mjs?v=20261116";
+import { SEAM_MENU, SEAM_MUTE_TITLES, isBlendIn, seamCornerReserve } from "../shared/stitch_seam.mjs?v=20261116";
+import { NUMBER_LOOK_MENU, TEXT_LOOK_MENU, setTextLook, textLook, textLookCornerReserve } from "../shared/text_look.mjs?v=20261116";
+import { fineEdgeLabel } from "../shared/touch_math.mjs?v=20261116";
+import { valueToTake, wiredLimits } from "../shared/wired_limits.mjs?v=20261116";
 
 // The Source lists preview the hovered file straight from ComfyUI's /view.
 const viewUrl = (value) => api.apiURL(`/view?${mediaViewQuery(value)}`);

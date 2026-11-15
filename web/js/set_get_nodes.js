@@ -1,4 +1,4 @@
-import { app } from "../../../scripts/app.js";
+import { app } from "../../../scripts/app.js?v=20261116";
 
 app.registerExtension({
 	name: "ai-zzm setNode",

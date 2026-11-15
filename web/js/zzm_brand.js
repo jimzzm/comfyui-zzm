@@ -7,7 +7,7 @@
 // "是我们刷的"值当好认的旧色，顺手换成新色，省得旧工作流看不出改动。
 
 import { app } from "/scripts/app.js";
-import { injectTheme } from "./zzm_theme.mjs";
+import { injectTheme } from "./zzm_theme.mjs?v=20261116";
 
 const TITLE_BAR = "#C05C43";
 // 标题栏上的字：默认是浅灰，压在砖红底上发飘，直接给白色（LiteGraph 读的是类上的静态属性）

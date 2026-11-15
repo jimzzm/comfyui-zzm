@@ -4,11 +4,11 @@
 // words the node reads as instructions (@1, 3s:, a cut) stand out.
 import { api } from "/scripts/api.js";
 import { app } from "/scripts/app.js";
-import { BRAND, chainCallback } from "./index.mjs";
-import { dragRange, moveMoment, retime, rulerSeconds, stripCaption, stripRows, toggleCut, wiredJobs } from "./moment_strip_math.mjs";
-import { attachScriptAssist } from "./script_assist.mjs";
-import { attachScriptColours } from "./script_colours.mjs";
-import { commitWidgetValue } from "./widget_card_math.mjs";
+import { BRAND, chainCallback } from "./index.mjs?v=20261116";
+import { dragRange, moveMoment, retime, rulerSeconds, stripCaption, stripRows, toggleCut, wiredJobs } from "./moment_strip_math.mjs?v=20261116";
+import { attachScriptAssist } from "./script_assist.mjs?v=20261116";
+import { attachScriptColours } from "./script_colours.mjs?v=20261116";
+import { commitWidgetValue } from "./widget_card_math.mjs?v=20261116";
 
 const CSS_ID = "zzmaus-moment-strip-css";
 const WAIT = 200; // Lets someone finish a word before asking.

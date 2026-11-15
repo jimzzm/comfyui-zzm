@@ -10,16 +10,16 @@
 // never decorated.
 import { api } from "/scripts/api.js";
 import { app } from "/scripts/app.js";
-import { isForeignRun } from "../shared/prompt_scope.mjs";
-import { keepKeyInField } from "../shared/canvas_passthrough.mjs";
-import { BRAND, chainCallback, keepDomWidgetWidthAuto, notifyZzmChange } from "../shared/index.mjs";
-import { installNameTokens, previewName as previewTokens } from "../shared/name_tokens.mjs";
-import { hideInputsInDef, hideWidget } from "../shared/widget_visibility.mjs";
-import { ensureCardCss } from "../shared/widget_card.mjs";
-import { holdNodeMinWidth, pinVuePanelHeight } from "../shared/panel_layout.mjs";
+import { isForeignRun } from "../shared/prompt_scope.mjs?v=20261116";
+import { keepKeyInField } from "../shared/canvas_passthrough.mjs?v=20261116";
+import { BRAND, chainCallback, keepDomWidgetWidthAuto, notifyZzmChange } from "../shared/index.mjs?v=20261116";
+import { installNameTokens, previewName as previewTokens } from "../shared/name_tokens.mjs?v=20261116";
+import { hideInputsInDef, hideWidget } from "../shared/widget_visibility.mjs?v=20261116";
+import { ensureCardCss } from "../shared/widget_card.mjs?v=20261116";
+import { holdNodeMinWidth, pinVuePanelHeight } from "../shared/panel_layout.mjs?v=20261116";
 import {
   FORMAT_LABELS, TAGS, namingMode, previewName, tagsEnabled,
-} from "../shared/save_formats.mjs?v=20261105";
+} from "../shared/save_formats.mjs?v=20261116";
 
 const NODE_CLASS = "ZZM_NODES_SaveImage";
 const WIDGET_NAME = "zzmaus_save_image_card";

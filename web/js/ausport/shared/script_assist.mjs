@@ -6,7 +6,7 @@
 //   after camera: or look: the node's own choices are listed.
 // Suggestions only open on those, so they stay out of other packs' way.
 // Picking one types it into the box the browser's way, so undo still works.
-import { CHEAT_SHEET, suggestAt } from "./script_assist_math.mjs";
+import { CHEAT_SHEET, suggestAt } from "./script_assist_math.mjs?v=20261116";
 
 const CSS_ID = "zzmaus-script-assist-css";
 

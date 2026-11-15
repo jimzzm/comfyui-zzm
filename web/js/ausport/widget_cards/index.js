@@ -212,7 +212,7 @@ const CARDS = {
   ZZM_NODES_ImageFolder: {
     minWidth: 340, first: true, hide: ["pictures"], socketless: ["pictures"],
     rows: [
-      { widget: "folder", label: "文件夹路径", placeholder: "完整路径，例如 D:////图片////待处理",
+      { widget: "folder", label: "文件夹路径", placeholder: "完整路径，例如 D:\\图片\\待处理",
         title: "图片所在文件夹在这台电脑上的完整路径。直接粘进来，图片就地读取、一张也不复制。要往里加图片，用下面的「添加」。" },
       { widget: "subfolders", label: "含子文件夹", offText: "否", onText: "是" },
       { widget: "sort", label: "排序", kind: "select" },

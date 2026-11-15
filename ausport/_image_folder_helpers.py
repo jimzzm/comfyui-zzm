@@ -37,7 +37,7 @@ MAX_PICTURES = 5000
 # see-through part. The pack's mask nodes know that stand-in ("no mask").
 NO_MASK_SIZE = (64, 64)
 
-NOT_CHOSEN = "批量加载图片：还没有选文件夹。点卡片上的「打开文件夹」选一个。"
+NOT_CHOSEN = "批量加载图片：还没有填文件夹路径。把完整路径粘到卡片第一行，或者用「添加 → 整个文件夹…」。"
 NOT_WHOLE = '批量加载图片：请填完整路径，像 D:\\图片\\待处理 这样，"{folder}" 不是。'
 NO_FOLDER = '批量加载图片：找不到文件夹 "{folder}"。'
 NO_PICTURES = '批量加载图片："{folder}" 里没有图片。'

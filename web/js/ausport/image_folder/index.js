@@ -929,8 +929,8 @@ function mountPanel(node) {
   try {
     return buildPanel(node);
   } catch (error) {
-    // The gallery is a convenience: the card still picks a folder and runs.
-    console.error("[ZZM] 批量加载图片：缩略图面板没挂上，卡片上的「打开文件夹」仍然可用。", error);
+    // The gallery is a convenience: the card still reads a path and runs.
+    console.error("[ZZM] 批量加载图片：缩略图面板没挂上。卡片第一行照样能填路径，只是没有缩略图。", error);
     return null;
   }
 }

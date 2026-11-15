@@ -78,7 +78,8 @@ function ensureCss() {
 .zzmaus-if-chip{box-sizing:border-box;height:26px;padding:0 10px;border:1px solid rgba(192,92,67,.5);border-radius:10px;background:rgba(192,92,67,.14);color:${BRAND};font:600 11.5px/24px "Segoe UI",sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
 .zzmaus-if-chip.warn{border-color:var(--zzm-warn,#ffca16);background:rgba(201,138,43,.16);color:var(--zzm-warn,#ffca16);}
 .zzmaus-if-gap{flex:1 1 auto;}
-.zzmaus-if-btn{flex:none;box-sizing:border-box;height:26px;padding:0 10px;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:5px;background:var(--zzm-view,#18191b);color:var(--zzm-dim,#b0b4ba);font:600 11.5px/24px "Segoe UI",sans-serif;cursor:pointer;}
+/* 正常字重：600 在中文里会被浏览器合成加粗，看着发糊。 */
+.zzmaus-if-btn{flex:none;box-sizing:border-box;height:26px;padding:0 10px;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:5px;background:var(--zzm-view,#18191b);color:var(--zzm-dim,#b0b4ba);font:400 11.5px/24px "Segoe UI",sans-serif;cursor:pointer;}
 .zzmaus-if-btn:hover{color:var(--zzm-text,#edeef0);border-color:${BRAND};}
 .zzmaus-if-btn[disabled]{opacity:.38;cursor:default;border-color:var(--zzm-line-soft,#363a3f);color:var(--zzm-dim,#b0b4ba);}
 .zzmaus-if-grid{flex:1 1 auto;min-height:0;box-sizing:border-box;display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));grid-auto-rows:max-content;align-content:start;gap:5px;padding:5px;overflow-y:auto;border:1px solid rgba(192,92,67,.22);border-radius:6px;background:var(--zzm-view,#18191b);scrollbar-width:thin;}

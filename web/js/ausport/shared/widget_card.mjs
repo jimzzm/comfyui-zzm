@@ -148,7 +148,7 @@ export function ensureCardCss() {
 .zzmaus-card-swatch::-webkit-color-swatch{border:none;border-radius:3px}
 .zzmaus-card-btn{flex:none;height:${ROW_HEIGHT}px;padding:0 10px;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:6px;background:var(--zzm-view,#18191b);color:var(--zzm-text,#edeef0);font:600 11.5px/1 ${FONT};cursor:pointer;white-space:nowrap}
 .zzmaus-card-btn:hover{border-color:${BRAND};color:var(--zzm-text,#edeef0)}
-.zzmaus-card-btn.primary{border-color:${BRAND};background:${BRAND};color:#fff;letter-spacing:.02em}
+.zzmaus-card-btn.primary{border-color:${BRAND};background:${BRAND};color:#fff;font-weight:400}
 .zzmaus-card-btn.primary:hover{border-color:#d06a4e;background:#d06a4e;color:#fff}
 `;
   document.head.append(style);

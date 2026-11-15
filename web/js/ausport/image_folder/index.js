@@ -53,8 +53,8 @@ const DROP_FOLDER = "zzm_drop";
 // How long the pointer rests on a tile before the preview is read.
 const HOVER_DELAY = 1000;
 // The preview's longest side, and the size the copy it shows is made at.
-const VIEW_EDGE = 460;
-const VIEW_THUMB = 720;
+const VIEW_EDGE = 640;
+const VIEW_THUMB = 1000;
 const PICTURE = /\.(png|jpe?g|webp|bmp|gif|tiff?)$/i;
 // A dropped folder is copied up to this many pictures.
 const COPY_LIMIT = 3000;
@@ -79,7 +79,7 @@ function ensureCss() {
 .zzmaus-if-chip.warn{border-color:var(--zzm-warn,#ffca16);background:rgba(201,138,43,.16);color:var(--zzm-warn,#ffca16);}
 .zzmaus-if-gap{flex:1 1 auto;}
 /* 正常字重：600 在中文里会被浏览器合成加粗，看着发糊。 */
-.zzmaus-if-btn{flex:none;box-sizing:border-box;height:26px;padding:0 10px;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:5px;background:var(--zzm-view,#18191b);color:var(--zzm-dim,#b0b4ba);font:400 11.5px/24px "Segoe UI",sans-serif;cursor:pointer;}
+.zzmaus-if-btn{flex:none;box-sizing:border-box;height:26px;padding:0 10px;border:1px solid var(--zzm-line-soft,#363a3f);border-radius:5px;background:var(--zzm-view,#18191b);color:var(--zzm-dim,#b0b4ba);font-family:inherit;font-size:inherit;font-weight:400;line-height:24px;cursor:pointer;}
 .zzmaus-if-btn:hover{color:var(--zzm-text,#edeef0);border-color:${BRAND};}
 .zzmaus-if-btn[disabled]{opacity:.38;cursor:default;border-color:var(--zzm-line-soft,#363a3f);color:var(--zzm-dim,#b0b4ba);}
 .zzmaus-if-grid{flex:1 1 auto;min-height:0;box-sizing:border-box;display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));grid-auto-rows:max-content;align-content:start;gap:5px;padding:5px;overflow-y:auto;border:1px solid rgba(192,92,67,.22);border-radius:6px;background:var(--zzm-view,#18191b);scrollbar-width:thin;}

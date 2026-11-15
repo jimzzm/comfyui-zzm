@@ -246,11 +246,37 @@ _THUMBS_LOCK = threading.Lock()
 _THUMBS_BYTES = 24 * 1024 * 1024
 _thumbs_size = 0
 THUMB_BACK = (27, 35, 38)
+# The same small copies also go on disk, under ComfyUI's temp folder: decoding a
+# folder of big pictures is what makes the first look slow, and a restart must
+# not throw that work away. None = not looked for yet, False = not available.
+_THUMB_DIR: "Path | bool | None" = None
+_THUMB_DIR_MAX = 20000
+
+
+def _thumb_cache_dir() -> "Path | None":
+    """Where the copies on disk live, or None when there is nowhere to put them."""
+    global _THUMB_DIR
+    if _THUMB_DIR is None:
+        try:                                    # offline tests have no ComfyUI
+            import folder_paths
+
+            folder = Path(folder_paths.get_temp_directory()) / "zzmaus_thumbs"
+            folder.mkdir(parents=True, exist_ok=True)
+            files = [entry for entry in folder.iterdir() if entry.is_file()]
+            if len(files) > _THUMB_DIR_MAX:     # a folder nobody ever cleaned up
+                for entry in sorted(files, key=lambda item: item.stat().st_mtime)[: len(files) // 2]:
+                    entry.unlink(missing_ok=True)
+            _THUMB_DIR = folder
+        except Exception:
+            _THUMB_DIR = False
+    return _THUMB_DIR or None
 
 
 def thumbnail(path, edge: int = 160) -> bytes:
     """A small JPEG of the picture. A see-through part shows on the gallery's
-    dark tile. Kept in a small cache keyed by the file's state."""
+    dark tile. Kept in memory, and on disk under ComfyUI's temp folder so the
+    next visit - even after a restart - costs a file read rather than a decode.
+    """
     global _thumbs_size
     edge = max(48, min(1024, int(edge)))
     real = Path(path)
@@ -261,11 +287,33 @@ def thumbnail(path, edge: int = 160) -> bytes:
         if hit is not None:
             _THUMBS.move_to_end(key)
             return hit
+
+    folder = _thumb_cache_dir()
+    saved = None
+    if folder is not None:
+        name = hashlib.sha1(
+            f"{real}|{key[1]}|{key[2]}|{edge}".encode("utf-8")
+        ).hexdigest()
+        saved = folder / f"{name}.jpg"
+        try:
+            data = saved.read_bytes()
+        except OSError:
+            data = b""
+        if data:
+            _remember(key, data)
+            return data
+
     with Image.open(real) as source:
         source.draft("RGB", (edge * 2, edge * 2))        # a JPEG decodes small straight away
         frame = ImageOps.exif_transpose(source)
         if frame.mode == "I":
             frame = frame.point(lambda value: value * (1 / 255))
+        # A big picture shrinks by whole steps first: it is a box filter in C,
+        # and unlike draft() it also speeds up PNG, which is what a screenshot
+        # or a render usually is.
+        shrink = min(frame.size) // max(1, edge * 2)
+        if shrink > 1:
+            frame = frame.reduce(shrink)
         if _has_see_through(frame):
             rgba = frame.convert("RGBA")
             rgba.thumbnail((edge, edge), Image.Resampling.LANCZOS)
@@ -277,14 +325,26 @@ def thumbnail(path, edge: int = 160) -> bytes:
     out = BytesIO()
     small.save(out, format="JPEG", quality=82)
     data = out.getvalue()
-    with _THUMBS_LOCK:
-        if key not in _THUMBS:
-            _THUMBS[key] = data
-            _thumbs_size += len(data)
-            while _thumbs_size > _THUMBS_BYTES and len(_THUMBS) > 1:
-                _, old = _THUMBS.popitem(last=False)
-                _thumbs_size -= len(old)
+    if saved is not None:
+        try:
+            saved.write_bytes(data)
+        except OSError:                     # a temp folder that went away: memory only
+            pass
+    _remember(key, data)
     return data
+
+
+def _remember(key, data: bytes) -> None:
+    """Keep a copy in memory, dropping the oldest once the budget is spent."""
+    global _thumbs_size
+    with _THUMBS_LOCK:
+        if key in _THUMBS:
+            return
+        _THUMBS[key] = data
+        _thumbs_size += len(data)
+        while _thumbs_size > _THUMBS_BYTES and len(_THUMBS) > 1:
+            _, old = _THUMBS.popitem(last=False)
+            _thumbs_size -= len(old)
 
 
 __all__ = [

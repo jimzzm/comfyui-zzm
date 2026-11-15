@@ -913,16 +913,31 @@ function buildPanel(node) {
 // The card alone can be taller than the node a workflow was saved with, which
 // leaves the gallery at no height at all: nothing to click, nothing to drop on.
 // When that happens the node gets the room back.
+// A node saved with a small size would squeeze the gallery to nothing: the
+// card alone can be taller than the node. Give the panel room when it has
+// less than this, and keep looking for a few frames: a DOM widget is mounted
+// a frame or two after the node is, and a workflow that is still loading can
+// put its own size on afterwards.
+const ROOM = 150;
 function ensurePanelRoom(state) {
-  requestAnimationFrame(() => {
-    if (!state.alive || !state.root.isConnected) return;
-    const shown = state.root.getBoundingClientRect().height;
-    if (shown >= 90) return;
+  let tries = 0;
+  const attempt = () => {
+    if (!state.alive) return;
+    const root = state.root;
     const node = state.node;
-    const tall = Math.round((node.size?.[1] ?? 0) + (150 - shown));
+    if (!root?.isConnected) {
+      if (++tries < 24) requestAnimationFrame(attempt);
+      return;
+    }
+    const shown = root.getBoundingClientRect().height;
+    if (shown >= 90) return;
+    const tall = Math.round((node.size?.[1] ?? 0) + (ROOM - shown));
     node.setSize?.([node.size?.[0] ?? MIN_WIDTH, tall]);
     node.graph?.setDirtyCanvas?.(true, true);
-  });
+    // One more look after the box re-lays out; stop after a handful.
+    if (++tries < 6) requestAnimationFrame(attempt);
+  };
+  requestAnimationFrame(attempt);
 }
 
 function mountPanel(node) {

@@ -9,6 +9,7 @@ zzm 工具箱 — ComfyUI 自定义节点合集
   ZZM_NODES_ImageFolder    批量加载图片（图像 / 遮罩 / 文件名 / 序号 / 总数）
   ZZM_NODES_LoraLoader     LoRA Loader
   ZZM_NODES_SaveImage      Save Image
+  ZZM Audio Duration       音频时长（AUDIO → 秒 / 毫秒）
 
 纯前端节点（web/js/set_get_nodes.js）：
   Set / Get                取值 / 赋值，跨节点传参不拉线
@@ -75,6 +76,7 @@ _no_store_assets()
 from .nodes_resolution import AspectRatio
 from .nodes_mask_fill_holes import MaskFillHoles
 from .nodes_prompt_list import PromptList, PromptListBatch, install_queue_hook
+from .nodes_audio_duration import AudioDuration
 from .ausport import NODE_CLASS_MAPPINGS as _AUS_MAP
 from .ausport import NODE_DISPLAY_NAME_MAPPINGS as _AUS_NAME
 
@@ -86,6 +88,7 @@ NODE_CLASS_MAPPINGS = {
     "ZZM Mask Fill Holes": MaskFillHoles,
     "ZZM Prompt List": PromptList,
     "ZZM Prompt List Batch": PromptListBatch,
+    "ZZM Audio Duration": AudioDuration,
     **_AUS_MAP,
 }
 
@@ -94,6 +97,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "ZZM Mask Fill Holes": "遮罩填洞",
     "ZZM Prompt List": "多段提示词（逐条）",
     "ZZM Prompt List Batch": "多段提示词·列表模式",
+    "ZZM Audio Duration": "音频时长",
     **_AUS_NAME,
 }
 

@@ -61,21 +61,44 @@ export function previewName(values, { now = new Date(), size = null } = {}) {
   return `${parts.join("_")}.${ext}`;
 }
 
-// The folder line of the preview: the output folder plus any subfolders
-// from the folder field and the prefix, or an absolute folder as typed.
-export function previewFolder(values, outputLabel = "ComfyUI/output") {
-  const folder = String(values.output_dir ?? "").trim().replace(/\\/g, "/");
+// A folder as typed, with Windows separators folded to slashes and doubled
+// separators collapsed (F:\\下载\\网图 and F:/下载/网图 are the same place).
+// A leading // is left alone: that is a UNC share, not a doubled separator.
+const cleanFolder = (text) => String(text ?? "").trim()
+  .replace(/\\/g, "/")
+  .replace(/([^:])\/{2,}/g, "$1/");
+
+// A full path typed into the folder field: a drive letter (F:/x), a UNC share
+// (//server/x) or a POSIX root. '~/pics' counts too - it names a place, not a
+// subfolder of the output folder.
+export function isAbsoluteFolder(text) {
+  const written = cleanFolder(text);
+  if (!written) return false;
+  if (written.startsWith("//")) return true;
+  if (/^[A-Za-z]:\//.test(written)) return true;
+  return written === "~" || written.startsWith("~/") || written.startsWith("/");
+}
+
+// The folder line of the preview: a full path as typed, otherwise any
+// subfolders from the folder field and from the name prefix. The caller
+// passes a label only when it wants the output folder named ("ComfyUI/output")
+// - the card shows the bare relative path, which is what the person typed.
+export function previewFolder(values, outputLabel = "") {
+  const folder = cleanFolder(values.output_dir);
   const prefix = String(values.filename_prefix ?? "").trim().replace(/\\/g, "/");
   const mode = namingMode({ filenameLinked: values.filenameLinked, exactName: values.exact_name });
   const prefixFolder = mode === "local" ? prefix.split("/").filter((part) => part && part !== ".").slice(0, -1).join("/") : "";
-  // Save Image writes only inside the output folder; say so where the path
-  // would be, before a run refuses it.
-  if (/^(\/|~)/.test(folder) || folder.includes(":") || folder.split("/").includes("..")) {
-    return `Not saved: use a subfolder of ${outputLabel}`;
+  if (isAbsoluteFolder(folder)) {
+    const base = folder.replace(/\/+$/, "");
+    return prefixFolder ? `${base}/${prefixFolder}/` : `${base}/`;
+  }
+  if (folder.split("/").includes("..")) {
+    return `Not saved: use a subfolder of ${outputLabel || "the output folder"}`;
   }
   const segments = [outputLabel, folder.replace(/^\/+|\/+$/g, "")];
   if (prefixFolder) segments.push(prefixFolder);
-  return segments.filter(Boolean).join("/") + "/";
+  const joined = segments.filter(Boolean).join("/");
+  return joined ? `${joined}/` : "";
 }
 
 // Tags only decorate a locally composed name.

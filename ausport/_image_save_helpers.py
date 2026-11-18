@@ -84,23 +84,52 @@ OUTPUT_DIR_RULE = (
     "Save Image saves only inside ComfyUI's output folder: output_dir takes a "
     "subfolder name such as sets/portraits, or stays empty for the output folder itself."
 )
+# A full path typed into output_dir ("F:\下载\网图") is taken as the save root
+# itself, so a picture can land in a library on another drive. Network shares
+# are refused: on Windows a \\server\share path reaches out over SMB from the
+# mere isdir/exists check, leaking an NTLM hash before anything is written.
+UNC_RULE = (
+    "Save Image cannot write to a network path (\\\\server\\share). "
+    "Use a local folder such as F:\\下载\\网图."
+)
+
+
+def is_absolute_folder(text: str) -> bool:
+    """True for a full path: a drive letter (F:/x), a UNC share (//server/x)
+    or a POSIX root. '~/pics' counts as absolute as well - it names a place,
+    not a subfolder of the output folder."""
+    written = str(text or "").strip().replace("\\", "/")
+    if not written:
+        return False
+    if written.startswith("//"):
+        return True
+    if re.match(r"^[A-Za-z]:/", written):
+        return True
+    return written == "~" or written.startswith("~/") or written.startswith("/")
 
 
 def resolve_output_root(output_dir: str, default_root: str | Path) -> Path:
-    """'' -> the output folder; otherwise a subfolder inside it.
+    """'' -> the output folder; a full path -> that folder itself; anything
+    else -> a subfolder inside the output folder.
 
     output_dir is a widget, and widget values arrive through ComfyUI's
-    unauthenticated /prompt route, so Save Image writes only inside the
-    output folder, like ComfyUI's own Save Image. Rooted paths, drive
-    letters, network paths, '~' and '..' are refused from the text alone,
-    before anything touches the disk; a subfolder that a link would carry
-    outside the output folder is refused as well.
+    unauthenticated /prompt route, so a relative value can only name a place
+    inside the output folder: rooted paths, drive letters, '~' and '..' are
+    refused from the text alone, before anything touches the disk, and a
+    subfolder a link would carry outside is refused as well. A FULL path is
+    the person naming a real folder of their own - it is allowed, and the
+    containment check downstream then holds inside that folder.
     """
     text = str(output_dir or "").strip()
     default = Path(default_root)
     if not text:
         return default
     written = text.replace("\\", "/")
+    if written.startswith("//"):
+        raise ValueError(UNC_RULE)
+    if is_absolute_folder(text):
+        # expanduser so '~/pics' means what it says; resolve normalises dots.
+        return Path(text).expanduser().resolve()
     parts = [part for part in written.split("/") if part not in ("", ".")]
     if written.startswith(("/", "~")) or ":" in written or PureWindowsPath(text).drive or ".." in parts:
         raise ValueError(OUTPUT_DIR_RULE)
@@ -358,11 +387,13 @@ __all__ = [
     "IMAGE_EXTENSIONS",
     "IMAGE_FORMATS",
     "OUTPUT_DIR_RULE",
+    "UNC_RULE",
     "counter_pattern",
     "encode_image",
     "existing_action",
     "fill_name_tokens",
     "frame_to_pil",
+    "is_absolute_folder",
     "metadata_disabled",
     "name_stem",
     "next_free_counter",

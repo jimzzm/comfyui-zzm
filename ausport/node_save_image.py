@@ -13,6 +13,7 @@ from ._image_save_helpers import (
     encode_image,
     existing_action,
     fill_name_tokens,
+    is_absolute_folder,
     metadata_disabled,
     name_stem,
     next_free_counter,
@@ -33,11 +34,30 @@ except ImportError:  # offline tests
     folder_paths = None
 
 
+def _temp_preview_copy(path: Path):
+    """A copy inside ComfyUI's temp folder, so /view can serve a picture that
+    was saved to another drive. A random prefix keeps two folders holding the
+    same file name apart. None when the copy fails: the save has already landed
+    and a preview must not undo it."""
+    try:
+        import shutil
+        import uuid
+        temp_root = Path(folder_paths.get_temp_directory())
+        temp_root.mkdir(parents=True, exist_ok=True)
+        target = temp_root / f"zzmaus_{uuid.uuid4().hex[:10]}{path.suffix}"
+        shutil.copy2(path, target)
+        return target
+    except Exception:
+        return None
+
+
 def _register_folder_route() -> None:
-    """GET /zzmaus/save_image/folders?path=<relative> lists the subfolders
-    under ComfyUI's output folder, for the node's Browse button. Paths are
-    attacker-controlled: anything that resolves outside the output folder
-    answers 400, and nothing outside it is ever listed."""
+    """GET /zzmaus/save_image/folders?path=<folder> lists subfolders for the
+    node's Browse button: a relative path stays inside ComfyUI's output folder,
+    a full path (F:/下载/网图) is listed as typed - that folder is the save root.
+
+    POST /zzmaus/save_image/open_folder opens that folder in the OS file
+    manager, for this machine's user only (Pixaroma's Folder button)."""
     try:
         from aiohttp import web
         from server import PromptServer
@@ -53,12 +73,16 @@ def _register_folder_route() -> None:
     @server.routes.get("/zzmaus/save_image/folders")
     async def list_folders(request):
         root = Path(folder_paths.get_output_directory()).resolve()
-        relative = str(request.rel_url.query.get("path", "")).strip().replace("\\", "/")
+        folder = str(request.rel_url.query.get("path", "")).strip()
         try:
-            target = resolve_output_root(relative, root)
-        except Exception:
-            return web.json_response({"error": "bad path"}, status=400)
-        if target != root and root not in target.parents:
+            target = resolve_output_root(folder, root)
+        except Exception as error:
+            return web.json_response({"error": str(error)}, status=400)
+        # A full path is its own root (that is where the files go), so the
+        # containment check runs inside it; a relative one stays in output.
+        absolute = is_absolute_folder(folder)
+        base = target if absolute else root
+        if target != base and base not in target.parents:
             return web.json_response({"error": "outside the output folder"}, status=400)
         if not target.is_dir():
             return web.json_response({"error": "not a folder"}, status=404)
@@ -66,14 +90,61 @@ def _register_folder_route() -> None:
             entry.name for entry in target.iterdir()
             if not entry.name.startswith(".") and not entry.is_symlink() and entry.is_dir()
         )
-        shown = "" if target == root else target.relative_to(root).as_posix()
+        shown = str(target) if absolute else ("" if target == root else target.relative_to(root).as_posix())
         return web.json_response({"path": shown, "folders": folders})
+
+    @server.routes.post("/zzmaus/save_image/open_folder")
+    async def open_folder(request):
+        """Open the OS file manager at the node's save folder.
+
+        Local installs only: the window would appear on this machine's screen,
+        so a caller elsewhere has nothing to gain and gets a refusal. A network
+        path is refused by resolve_output_root before any disk probe - on
+        Windows the isdir check alone would reach out over SMB.
+        """
+        try:
+            import ipaddress
+            peer = str(getattr(request, "remote", "") or "").strip("[]")
+            if not ipaddress.ip_address(peer).is_loopback:
+                return web.json_response({"ok": False, "message": "只能在本机打开文件夹。"}, status=403)
+        except Exception:
+            return web.json_response({"ok": False, "message": "只能在本机打开文件夹。"}, status=403)
+        try:
+            data = await request.json()
+        except Exception:
+            data = {}
+        folder = str((data if isinstance(data, dict) else {}).get("folder", "") or "").strip()
+        try:
+            root = Path(folder_paths.get_output_directory())
+            target = resolve_output_root(folder, root)
+        except Exception as error:
+            return web.json_response({"ok": False, "message": str(error)})
+        if not target.is_dir():
+            return web.json_response({
+                "ok": False,
+                "message": "这个文件夹还不存在，第一次保存时会自动创建。",
+            })
+        try:
+            import os
+            import subprocess
+            import sys
+            if sys.platform == "win32":
+                # Plain open only: a PowerShell bring-to-front script is flagged
+                # by antivirus heuristics (Pixaroma hit this in 2026-07).
+                os.startfile(str(target))
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", str(target)])
+            else:
+                subprocess.Popen(["xdg-open", str(target)])
+            return web.json_response({"ok": True})
+        except Exception as error:
+            return web.json_response({"ok": False, "message": str(error)})
 
 
 class ZZMSaveImage:
     CATEGORY = "⚡ zzm工具箱"
     DESCRIPTION = (
-        "把 IMAGE 批次存成 PNG、无损 WebP 或 JPG，可以嵌入工作流，也可以刻意不嵌。\n· 文件名可以在这里拼：前缀 + 日期/时间/尺寸/计数/批次号\n· 也可以由「文件名」输入给出精确名字（改图、放大后沿用原名）\n· 说明文字不为空时，写一个同名 .txt，做数据集打标那种配对\n只往 ComfyUI 的 output 目录里写，绝对路径会被拒绝。"
+        "把 IMAGE 批次存成 PNG、无损 WebP 或 JPG，可以嵌入工作流，也可以刻意不嵌。\n· 文件名可以在这里拼：前缀 + 日期/时间/尺寸/计数/批次号\n· 也可以由「文件名」输入给出精确名字（改图、放大后沿用原名）\n· 说明文字不为空时，写一个同名 .txt，做数据集打标那种配对\n· 「文件夹」留空存到 output；填子目录如 sets/portraits 存到 output 下；填完整路径如 F:\\下载\\网图 直接存那儿（不支持网络路径）"
     )
     SEARCH_ALIASES = [
         "save image",
@@ -315,7 +386,7 @@ class ZZMSaveImage:
         else:
             subfolder, base = split_prefix(filename_prefix)
             folder = root / subfolder if subfolder else root
-            require_output_path(folder, output_root)
+            require_output_path(folder, root)
             stem = name_stem(
                 base,
                 {"date": bool(name_date), "time": bool(name_time), "size": bool(name_size)},
@@ -338,9 +409,9 @@ class ZZMSaveImage:
         # then settle every collision: an "error" on a later frame must stop
         # the run before the first frame lands, not after.
         for path, _policy in planned:
-            require_output_path(path, output_root)
+            require_output_path(path, root)
             if caption_value.strip():
-                require_output_path(sidecar_path(path), output_root)
+                require_output_path(sidecar_path(path), root)
         actions = [existing_action(path.exists(), policy) for path, policy in planned]
 
         saved: list[Path] = []
@@ -353,22 +424,35 @@ class ZZMSaveImage:
                 sidecar_path(path).write_text(caption_value, encoding="utf-8")
             saved.append(path)
 
-        # Every destination was confined to the output folder above, so each
-        # saved file previews from there and is shown relative to it. The
-        # preview switch is display only: these entries are also how the
-        # queue lists the save, and there is no temp file to skip.
+        # Everything was confined to the save root above. When that root is
+        # inside ComfyUI's output folder the files preview from there and are
+        # named relative to it. A full path typed into output_dir puts the
+        # files somewhere ComfyUI's /view cannot serve, so each one is copied
+        # into temp for the node's picture - the save itself stays where the
+        # person asked for it.
         previews: list[dict] = []
-        resolved_root = output_root.resolve()
+        resolved_root = root.resolve()
+        output_resolved = output_root.resolve()
+        inside_output = resolved_root == output_resolved or output_resolved in resolved_root.parents
         shown_paths: list[str] = []
         for path in saved:
             resolved = path.resolve()
-            relative = resolved.parent.relative_to(resolved_root)
-            previews.append({
-                "filename": resolved.name,
-                "subfolder": "" if relative == Path(".") else str(relative),
-                "type": "output",
-            })
-            shown_paths.append(resolved.relative_to(resolved_root).as_posix())
+            if inside_output:
+                # The preview's subfolder is relative to the OUTPUT folder (that
+                # is what /view resolves against), not to the save root - a
+                # node saving into output/sets must say subfolder="sets".
+                relative = resolved.parent.relative_to(output_resolved)
+                previews.append({
+                    "filename": resolved.name,
+                    "subfolder": "" if relative == Path(".") else str(relative),
+                    "type": "output",
+                })
+                shown_paths.append(resolved.relative_to(resolved_root).as_posix())
+            else:
+                shown_paths.append(str(resolved))
+                copy = _temp_preview_copy(resolved)
+                if copy is not None:
+                    previews.append({"filename": copy.name, "subfolder": "", "type": "temp"})
         return {
             "ui": {"images": previews, "zzmaus_saved_path": shown_paths[:1]},
             "result": (str(saved[0]) if saved else "", images),

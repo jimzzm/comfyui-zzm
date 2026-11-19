@@ -125,4 +125,15 @@ class AspectRatio:
 
         latent = torch.zeros([批量大小, 4, height // 8, width // 8])
 
-        return (width, height, 批量大小, {"samples": latent})
+        # 必须声明「这份 latent 是按 8 倍空间压缩造的」。
+        # ComfyUI 的 KSampler 会把它换算到当前模型的 latent 格式：
+        #   · SD/SDXL 等 8 倍格式 → 原样使用
+        #   · Flux2 / MOSS 等 16 倍格式 → 尺寸减半，通道数由采样器补齐（fix_empty_latent_channels）
+        # 少了这个键，16 倍格式的模型会把 8 倍 latent 直接按 16 倍解码 ——
+        # 出图正好是设定值的 2 倍（例：设定 1248×1664 → 实出 2496×3328）。
+        return (
+            width,
+            height,
+            批量大小,
+            {"samples": latent, "downscale_ratio_spacial": 8},
+        )

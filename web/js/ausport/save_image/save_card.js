@@ -115,6 +115,44 @@ function filenameLinked(node) {
   return Boolean(node.inputs?.some((input) => input?.name === "filename" && input.link !== null && input.link !== undefined));
 }
 
+function inputConnected(node, input) {
+  if (!input) return false;
+  // 挂在图上才问前端；加载途中 graph 未就绪时只有序列化里的 link 镜像可看。
+  if (node.graph && typeof node.isInputConnected === "function") return node.isInputConnected(input);
+  return input.link != null;
+}
+
+// 每个 widget 在图上还挂着一个「widget 输入槽」。卡片把它们藏了，槽却还在：
+// 前端按 `pos = [10, widget.y + 10]` 给 widget 槽定位（LGraphNode
+// _arrangeWidgetInputSlots），而隐藏的 widget 不参与布局、y 恒为 0 ——
+// 十几个槽全叠在 (10, 10)，跟 images 槽的 (10, 14) 只差 4px。悬停时前端
+// 按「鼠标在槽上」把这些槽画出来（drawSlots 对 widget 槽只在悬停/连线时画），
+// 提示气泡还是那个 widget 自己的说明 —— 就是 zzm 2026-11-19 截图里的
+// 「两个几乎重叠的点，一个悬停才有反应、注释还不一样」。
+// 这些槽接不了线（widget 已被卡片接管、藏掉了），带着只会让人误连，直接摘掉。
+// 有线的跳过：存量工作流扫描过 26 个实例，一条都没有，但不能赌。
+function dropHiddenWidgetSlots(node) {
+  const inputs = node.inputs;
+  if (!Array.isArray(inputs) || !inputs.length) return 0;
+  let removed = 0;
+  for (let index = inputs.length - 1; index >= 0; index -= 1) {
+    const input = inputs[index];
+    const name = input?.widget?.name;
+    if (!name || inputConnected(node, input)) continue;
+    const target = node.widgets?.find((item) => item?.name === name);
+    if (!target) continue;
+    if (!target.hidden && !target.options?.hidden) continue;
+    inputs.splice(index, 1);
+    removed += 1;
+  }
+  if (removed) {
+    // 槽数组换了长度，重排一次；DOM 侧的卡片高度不受影响。
+    node._widgetSlotsDirty = true;
+    node.graph?.setDirtyCanvas?.(true, true);
+  }
+  return removed;
+}
+
 function setValue(node, name, next) {
   const target = widget(node, name);
   if (!target || target.value === next) return false;
@@ -557,6 +595,9 @@ function buildCard(node) {
     // it on: the switch no longer exists on the face.
     const flag = widget(node, "preview");
     if (flag) { hideWidget(flag); if (flag.element) flag.element.style.display = "none"; flag.value = true; }
+    // 老工作流里存着 16 条输入（含 13 个 widget 槽），加载时原样恢复 —— 隐藏
+    // widget 之后再把它们摘掉，否则幽灵点又回来。
+    dropHiddenWidgetSlots(node);
     // 旧工作流里存的格式是 "jxl 无损"（这一版换成了 jpg），加载时顺手改过来
     const formatWidget = widget(node, "format");
     if (formatWidget && String(formatWidget.value).toLowerCase().startsWith("jxl")) formatWidget.value = "jpg";
@@ -588,6 +629,8 @@ app.registerExtension({
     chainCallback(nodeType.prototype, "onNodeCreated", function () {
       if (this.__zzmausSaveImage) return;
       buildCard(this);
+      // buildCard 已把这些 widget 藏掉，它们留下的空槽现在才能认出并摘掉。
+      dropHiddenWidgetSlots(this);
       // %date:yyyy-MM-dd% and %Node.setting% in the name (js/shared/name_tokens.mjs).
       installNameTokens(this, ["filename_prefix", "exact_name"], app);
     });
